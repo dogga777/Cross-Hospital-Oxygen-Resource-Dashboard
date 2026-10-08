@@ -1,5 +1,5 @@
 // Cross-Hospital Oxygen Resource Dashboard
-// Matching uploaded UI layout + Google Maps Location Finder
+// Hospital Login + Shortage Detection + Cross-Hospital Notifications + Barcode Cylinder Scanner
 
 let state = {
   hospitals: [],
@@ -13,16 +13,19 @@ let state = {
   map: null,
   mapMarkers: {},
   routePolyline: null,
-  selectedHospitalId: 'HOSP-01'
+  selectedHospitalId: 'HOSP-01',
+  loggedInHospitalId: 'HOSP-01', // Default logged-in hospital: Hospital A
+  notifications: []
 };
 
-// District 04 Hospital Mapping with coordinates, areas, and letters
+// District 04 Hospital Mapping
 const HOSPITALS_DATA = {
   'HOSP-01': {
     letter: 'A',
     area: 'Downtown',
     shortName: 'Hospital A',
     fullName: 'Metro General Hospital',
+    prefix: 'METRO',
     lat: 40.7128,
     lng: -74.0060,
     address: '740 Metro Parkway, Downtown Corridor, District 04',
@@ -34,6 +37,7 @@ const HOSPITALS_DATA = {
     area: 'Uptown',
     shortName: 'Hospital B',
     fullName: 'St. Jude Medical Center',
+    prefix: 'JUDE',
     lat: 40.7484,
     lng: -73.9857,
     address: '350 Northwood Blvd, Northside Medical Park, District 04',
@@ -45,6 +49,7 @@ const HOSPITALS_DATA = {
     area: 'Westside',
     shortName: 'Hospital C',
     fullName: 'Riverbank Emergency Annex',
+    prefix: 'RVR',
     lat: 40.6892,
     lng: -74.0445,
     address: '112 Riverbank Way, River Basin Waterfront, District 04',
@@ -55,7 +60,8 @@ const HOSPITALS_DATA = {
     letter: 'D',
     area: 'Harbor',
     shortName: 'Hospital D',
-    fullName: 'Memorial District Hospital',
+    fullName: 'Oak Valley Community Hospital',
+    prefix: 'OAK',
     lat: 40.7306,
     lng: -73.9352,
     address: '880 Harbor Ridge Ave, District 04',
@@ -66,7 +72,8 @@ const HOSPITALS_DATA = {
     letter: 'E',
     area: 'Heights',
     shortName: 'Hospital E',
-    fullName: 'Sunset Valley Pavilion',
+    fullName: 'Mercy Urban Care',
+    prefix: 'MRCY',
     lat: 40.7831,
     lng: -73.9712,
     address: '502 Sunset Heights, District 04 West',
@@ -77,7 +84,8 @@ const HOSPITALS_DATA = {
     letter: 'F',
     area: 'Foothills',
     shortName: 'Hospital F',
-    fullName: 'Crestview Medical Center',
+    fullName: 'Highland Specialty Institute',
+    prefix: 'HGH',
     lat: 40.6782,
     lng: -73.9442,
     address: '220 Crestview Rd, East Foothills',
@@ -92,6 +100,7 @@ function getHosp(id) {
     area: 'District',
     shortName: 'Hospital ?',
     fullName: 'District Hospital',
+    prefix: 'GEN',
     lat: 40.7128,
     lng: -74.0060,
     address: 'District 04',
@@ -109,7 +118,8 @@ function showToast(message, type = 'info') {
   const bgStyles = {
     info: 'bg-slate-900 border-teal-500 text-teal-300',
     success: 'bg-slate-900 border-emerald-500 text-emerald-300',
-    error: 'bg-rose-950 border-rose-500 text-rose-200'
+    error: 'bg-rose-950 border-rose-500 text-rose-200',
+    alert: 'bg-amber-950 border-amber-500 text-amber-200'
   };
 
   toast.className = `p-3.5 rounded-xl border shadow-xl text-xs font-semibold flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto backdrop-blur-md ${bgStyles[type] || bgStyles.info}`;
@@ -123,17 +133,38 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
-// Initialize application
+// Play subtle scanner beep sound
+function playScannerBeep() {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(1760, audioCtx.currentTime); // High pitch beep
+    gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.08);
+  } catch (e) {
+    // Audio not permitted or supported
+  }
+}
+
+// Initialize Application
 async function init() {
   startLiveClock();
   initMap();
   setupEventListeners();
+  updateQuickScanChips();
   await loadInitialData();
+  await loadNotifications();
   setupWebSocket();
   await loadAuditHistory();
 }
 
-// 1. Live Clock display matching screenshot (e.g. 10:53:51 AM)
+// 1. Live Clock display matching screenshot
 function startLiveClock() {
   const clockEl = document.getElementById('liveClockDisplay');
   function update() {
@@ -158,12 +189,13 @@ async function loadInitialData() {
 
     renderAll();
     updateMapData();
+    updateScannerDisplayStock();
   } catch (err) {
     console.error('Failed to load initial data:', err);
   }
 }
 
-// 3. WebSocket Real-Time Telemetry Stream
+// 3. WebSocket Real-Time Telemetry & Notification Stream
 function setupWebSocket() {
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -184,6 +216,15 @@ function setupWebSocket() {
         state.hospitalWithMostCylinders = data.rebalancePlan.hospitalWithMostCylinders || null;
         renderAll();
         updateMapData();
+      } else if (data.type === 'NOTIFICATION_RECEIVED') {
+        loadNotifications();
+        showToast(`🚨 URGENT NOTIFICATION: Shortage detected at ${data.notification.fromHospitalName}!`, 'error');
+      } else if (data.type === 'NOTIFICATION_RESOLVED') {
+        loadNotifications();
+        showToast(`✓ Notification resolved: Oxygen cylinders dispatched!`, 'success');
+        loadAuditHistory();
+      } else if (data.type === 'CYLINDER_SCANNED') {
+        loadInitialData();
       } else if (data.type === 'TRANSFER_EXECUTED') {
         showToast(`✓ Ambulance dispatched! ${data.transfer.quantity} cylinders transferred.`, 'success');
         loadAuditHistory();
@@ -213,17 +254,14 @@ function renderAll() {
 function renderTopKPIs() {
   if (!state.predictions) return;
 
-  // 1. Current oxygen levels
   const totalCyl = state.predictions.reduce((acc, h) => acc + Math.round(h.currentStock), 0);
   const totalEl = document.getElementById('topTotalCylinders');
   if (totalEl) totalEl.textContent = totalCyl;
 
-  // 2. Predicting shortages
   const atRiskCount = state.predictions.filter(h => h.currentStock <= 20 || (h.timeToShortageHours !== null && h.timeToShortageHours <= 6)).length;
   const atRiskEl = document.getElementById('topAtRiskCount');
   if (atRiskEl) atRiskEl.textContent = atRiskCount;
 
-  // 3. Transfer activity
   const activeMoves = state.recommendations ? state.recommendations.length : 0;
   const movesEl = document.getElementById('topActiveTransfersCount');
   if (movesEl) movesEl.textContent = activeMoves;
@@ -300,7 +338,7 @@ function renderEmergencyDispatchAlert() {
   }
 }
 
-// 6. Render Current Stock Levels Table (Matching screenshot layout)
+// 6. Render Current Stock Levels Table
 function renderStockLevelsTable() {
   const tbody = document.getElementById('stockTableBody');
   if (!tbody || !state.predictions) return;
@@ -308,7 +346,6 @@ function renderStockLevelsTable() {
   const sorted = [...state.predictions].sort((a, b) => b.currentStock - a.currentStock);
   const highestId = sorted[0]?.hospitalId;
 
-  // Filter based on search term & risk filter
   const term = state.searchTerm.toLowerCase().trim();
   const filter = state.riskFilter;
 
@@ -327,7 +364,6 @@ function renderStockLevelsTable() {
     return matchesSearch && matchesFilter;
   });
 
-  // Update hospital count badge in footer
   const countBadge = document.getElementById('hospitalCountBadge');
   if (countBadge) countBadge.textContent = `${filteredHospitals.length} hospitals`;
 
@@ -340,8 +376,8 @@ function renderStockLevelsTable() {
     const info = getHosp(h.hospitalId);
     const isHighest = h.hospitalId === highestId;
     const isUnder20 = h.currentStock <= 20;
+    const isCurrentLoggedIn = h.hospitalId === state.loggedInHospitalId;
 
-    // Dot color: amber, green, or blinking red
     let dotHtml = '';
     if (isUnder20) {
       dotHtml = `<span class="h-2 w-2 rounded-full bg-rose-600 animate-pulse shrink-0"></span>`;
@@ -351,10 +387,8 @@ function renderStockLevelsTable() {
       dotHtml = `<span class="h-2 w-2 rounded-full bg-emerald-500 shrink-0"></span>`;
     }
 
-    // Depletion rate in red font
     const burnRateHtml = `<span class="text-rose-600 font-semibold">-${Math.abs(h.depletionRatePerHour)}/hr</span>`;
 
-    // Time to shortage
     let timeHtml = '';
     if (isUnder20) {
       timeHtml = `<span class="text-rose-600 font-extrabold animate-pulse">&le; 20 cyl (CRITICAL)</span>`;
@@ -366,36 +400,34 @@ function renderStockLevelsTable() {
       timeHtml = `<span class="text-slate-500">Surplus (>24h)</span>`;
     }
 
+    const rowHighlight = isCurrentLoggedIn ? 'bg-indigo-50/40 border-l-4 border-indigo-600' : 'hover:bg-slate-50';
+
     return `
-      <tr class="hover:bg-slate-50 transition cursor-pointer" onclick="selectHospitalOnMap('${h.hospitalId}')">
+      <tr class="${rowHighlight} transition cursor-pointer" onclick="selectHospitalOnMap('${h.hospitalId}')">
         
-        <!-- Hospital Name + Area (Matching screenshot) -->
         <td class="py-3.5 px-5">
           <div class="flex items-center space-x-2">
             ${dotHtml}
             <span class="font-bold text-slate-800">${info.shortName}</span>
             <span class="text-slate-400 text-xs font-normal">${info.area}</span>
+            ${isCurrentLoggedIn ? '<span class="text-[10px] font-bold bg-indigo-100 text-indigo-800 px-1.5 py-0.2 rounded-full ml-1">👤 Active Session</span>' : ''}
             ${isHighest ? '<span class="text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-1.5 py-0.2 rounded-full ml-1">🟢 Most Cylinders</span>' : ''}
           </div>
           <span class="text-[11px] text-slate-400 block pl-4 mt-0.5">${info.fullName}</span>
         </td>
 
-        <!-- Oxygen Cylinders -->
         <td class="py-3.5 px-5 font-bold text-slate-800 text-sm font-mono">
           ${Math.round(h.currentStock)}
         </td>
 
-        <!-- Depletion Rate -->
         <td class="py-3.5 px-5">
           ${burnRateHtml}
         </td>
 
-        <!-- Time to Shortage -->
         <td class="py-3.5 px-5">
           ${timeHtml}
         </td>
 
-        <!-- Test controls -->
         <td class="py-3.5 px-5 text-right space-x-1.5 whitespace-nowrap" onclick="event.stopPropagation()">
           <button onclick="setHospitalStock('${h.hospitalId}', 12)" class="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200 transition" title="Simulate dropping to 12 cylinders">
             Set 12 cyl (&le;20)
@@ -410,7 +442,7 @@ function renderStockLevelsTable() {
   }).join('');
 }
 
-// 7. Render Shortage Predictor (Matching screenshot: clean cards with curve graph)
+// 7. Render Shortage Predictor
 function renderShortagePredictors() {
   const container = document.getElementById('shortagePredictorContainer');
   if (!container || !state.predictions) return;
@@ -425,7 +457,6 @@ function renderShortagePredictors() {
   const hoursB = hB.timeToShortageHours ? hB.timeToShortageHours.toFixed(1) : '10.1';
 
   container.innerHTML = `
-    <!-- Card 1: Hospital A (Matching screenshot) -->
     <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-4">
       <div class="space-y-1">
         <div class="flex items-center space-x-2">
@@ -436,7 +467,6 @@ function renderShortagePredictors() {
         <div class="text-[11px] text-slate-400 pl-4">${hoursA} hrs remaining &middot; 97% model confidence</div>
       </div>
 
-      <!-- Downward Curve Graph (Matching screenshot) -->
       <div class="w-36 h-12 shrink-0">
         <svg class="w-full h-full" viewBox="0 0 140 40">
           <path d="M 5,5 Q 40,25 70,30 L 135,30" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
@@ -444,7 +474,6 @@ function renderShortagePredictors() {
       </div>
     </div>
 
-    <!-- Card 2: Hospital B (Matching screenshot) -->
     <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-4">
       <div class="space-y-1">
         <div class="flex items-center space-x-2">
@@ -455,7 +484,6 @@ function renderShortagePredictors() {
         <div class="text-[11px] text-slate-400 pl-4">${hoursB} hrs remaining &middot; 85% model confidence</div>
       </div>
 
-      <!-- Downward Curve Graph (Matching screenshot) -->
       <div class="w-36 h-12 shrink-0">
         <svg class="w-full h-full" viewBox="0 0 140 40">
           <path d="M 5,5 Q 45,28 75,32 L 135,32" fill="none" stroke="#d97706" stroke-width="2.5" stroke-linecap="round" />
@@ -465,7 +493,7 @@ function renderShortagePredictors() {
   `;
 }
 
-// 8. Render Transfer Recommendations (Matching screenshot: green banner boxes)
+// 8. Render Transfer Recommendations
 function renderTransferRecommendations() {
   const container = document.getElementById('transferRecommendationsContainer');
   const countBadge = document.getElementById('recCountBadge');
@@ -483,14 +511,13 @@ function renderTransferRecommendations() {
 
   if (countBadge) countBadge.textContent = state.recommendations.length;
 
-  container.innerHTML = state.recommendations.slice(0, 2).map((rec, idx) => {
+  container.innerHTML = state.recommendations.slice(0, 2).map((rec) => {
     const donorInfo = getHosp(rec.donorId);
     const recipInfo = getHosp(rec.recipientId);
 
     return `
       <div class="bg-white rounded-xl border border-slate-200 p-3.5 shadow-sm space-y-2.5">
         
-        <!-- Header Row (Matching screenshot) -->
         <div class="flex items-center justify-between">
           <div class="font-bold text-slate-800 text-sm">
             ${donorInfo.shortName} &rarr; ${recipInfo.shortName}
@@ -500,17 +527,14 @@ function renderTransferRecommendations() {
           </span>
         </div>
 
-        <!-- Transit & Logistics subtext -->
         <div class="text-xs text-slate-500">
           ${rec.transferQuantity} cylinders moved &middot; ${rec.transitDistanceKm || '11'} km &middot; ETA ${((rec.transitMinutes || 48) / 60).toFixed(1)} hrs
         </div>
 
-        <!-- Solid Green Box (Exact look from screenshot) -->
         <div class="bg-[#2e7d32] text-white text-xs font-medium rounded-md p-3 shadow-sm leading-relaxed">
           ${recipInfo.shortName} has about ${Math.max(1, Math.round(rec.recipientDepletionHours || 5.8))} hours of oxygen remaining; ${donorInfo.shortName} can spare ${rec.transferQuantity} cylinders while keeping a 4.0-hour reserve.
         </div>
 
-        <!-- Ambulance Plate, Driver & Direct Dispatch Button -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 border-t border-slate-100 text-xs">
           <div class="flex items-center space-x-2 text-slate-700">
             <span>🚑 <span class="font-mono font-bold text-indigo-700">${rec.ambulanceNumber}</span></span>
@@ -530,29 +554,207 @@ function renderTransferRecommendations() {
   }).join('');
 }
 
-// 9. Interactive Leaflet / Google Maps Location Finder Setup
+// 9. Cylinder Barcode Scanning Logic
+function updateQuickScanChips() {
+  const container = document.getElementById('quickScanChips');
+  if (!container) return;
+
+  const currentHosp = getHosp(state.loggedInHospitalId);
+  const p = currentHosp.prefix || 'METRO';
+
+  const samples = [
+    `O2-${p}-001`,
+    `O2-${p}-002`,
+    `O2-${p}-003`,
+    `O2-${p}-015`,
+    `O2-${p}-020`
+  ];
+
+  container.innerHTML = samples.map(s => `
+    <button onclick="setBarcodeAndScan('${s}')" class="px-2 py-0.5 rounded bg-white hover:bg-indigo-50 border border-slate-300 hover:border-indigo-400 font-mono text-[11px] text-slate-700 transition cursor-pointer">
+      ${s}
+    </button>
+  `).join('');
+
+  const input = document.getElementById('barcodeInput');
+  if (input) input.value = `O2-${p}-001`;
+
+  const activeSerial = document.getElementById('barcodeActiveSerial');
+  if (activeSerial) activeSerial.textContent = `O2-${p}-001`;
+}
+
+window.setBarcodeAndScan = function(serial) {
+  const input = document.getElementById('barcodeInput');
+  if (input) input.value = serial;
+  const activeSerial = document.getElementById('barcodeActiveSerial');
+  if (activeSerial) activeSerial.textContent = serial;
+};
+
+// Handle Barcode Scan Action (Consume or Receive)
+async function triggerBarcodeScan(action = 'CONSUME') {
+  const input = document.getElementById('barcodeInput');
+  const serial = input ? input.value.trim() : 'O2-METRO-001';
+  if (!serial) {
+    showToast('Please enter a barcode serial number to scan', 'alert');
+    return;
+  }
+
+  playScannerBeep();
+
+  try {
+    const res = await fetch('/api/cylinders/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        serialNumber: serial,
+        action,
+        hospitalId: state.loggedInHospitalId
+      })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      // Update Dossier Box
+      const titleEl = document.getElementById('scanResultTitle');
+      const subEl = document.getElementById('scanResultSub');
+      const stockEl = document.getElementById('scanResultStockLeft');
+      const statusEl = document.getElementById('scanResultStatus');
+      const wardEl = document.getElementById('scanResultWard');
+      const purityEl = document.getElementById('scanResultPurity');
+      const badgeEl = document.getElementById('scanNotificationBadge');
+
+      if (titleEl) titleEl.textContent = `Scanned ${result.cylinder.serialNumber}`;
+      if (subEl) subEl.textContent = `Action: ${action === 'CONSUME' ? 'Dispensed to Ward' : 'Received into Depot'}`;
+      if (stockEl) stockEl.textContent = `${result.cylindersLeft} Cylinders Left`;
+      if (statusEl) statusEl.textContent = result.cylinder.status;
+      if (wardEl) wardEl.textContent = result.cylinder.wardAssignment || 'Emergency Bay';
+      if (purityEl) purityEl.textContent = `${result.cylinder.purity} · ${result.cylinder.pressurePsi} PSI`;
+
+      if (result.emergencyTriggered) {
+        if (badgeEl) badgeEl.classList.remove('hidden');
+        showToast(`🚨 CRITICAL SHORTAGE: ${result.hospital.name} has only ${result.cylindersLeft} cylinders left! Emergency alert sent to Hospital B!`, 'error');
+      } else {
+        if (badgeEl) badgeEl.classList.add('hidden');
+        showToast(`✓ Scanned ${result.cylinder.serialNumber}! Remaining: ${result.cylindersLeft} cylinders.`, 'success');
+      }
+
+      await loadInitialData();
+      await loadNotifications();
+    } else {
+      showToast(result.error || 'Failed to scan cylinder', 'error');
+    }
+  } catch (err) {
+    showToast('Scan error: ' + err.message, 'error');
+  }
+}
+
+function updateScannerDisplayStock() {
+  const pred = state.predictions.find(h => h.hospitalId === state.loggedInHospitalId);
+  const stockEl = document.getElementById('scanResultStockLeft');
+  if (stockEl && pred) {
+    stockEl.textContent = `${Math.round(pred.currentStock)} Cylinders`;
+  }
+}
+
+// 10. Cross-Hospital Notification Drawer
+async function loadNotifications() {
+  try {
+    const res = await fetch(`/api/notifications?hospitalId=${state.loggedInHospitalId}`);
+    state.notifications = await res.json();
+    renderNotificationDrawer();
+  } catch (err) {
+    console.error('Failed to load notifications:', err);
+  }
+}
+
+function renderNotificationDrawer() {
+  const drawer = document.getElementById('notificationDrawer');
+  const badge = document.getElementById('notifBadge');
+  const msgEl = document.getElementById('drawerNotifMessage');
+  const actionsEl = document.getElementById('drawerNotifActions');
+  if (!drawer || !badge) return;
+
+  const pending = state.notifications.filter(n => n.status === 'PENDING_APPROVAL');
+  badge.textContent = pending.length;
+
+  if (pending.length > 0) {
+    badge.classList.remove('hidden');
+    drawer.classList.remove('hidden');
+
+    const notif = pending[0];
+    const isDonor = notif.toHospitalId === state.loggedInHospitalId;
+
+    if (msgEl) {
+      msgEl.innerHTML = `
+        <strong>${notif.fromHospitalName}</strong> has only <strong class="text-rose-700">${notif.currentStockLeft} cylinders left</strong> (&le; 20 threshold)! 
+        Urgent request for <strong>${notif.requestedQuantity} cylinders</strong>.
+      `;
+    }
+
+    if (actionsEl) {
+      if (isDonor) {
+        actionsEl.innerHTML = `
+          <button onclick="respondToNotif('${notif.id}', 'APPROVE')" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition cursor-pointer">
+            Approve & Dispatch Ambulance (${notif.requestedQuantity} Cylinders)
+          </button>
+          <button onclick="respondToNotif('${notif.id}', 'DISMISS')" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold text-xs transition cursor-pointer">
+            Dismiss
+          </button>
+        `;
+      } else {
+        actionsEl.innerHTML = `
+          <span class="text-amber-800 font-semibold">Awaiting transfer approval from ${notif.toHospitalName}...</span>
+        `;
+      }
+    }
+  } else {
+    badge.classList.add('hidden');
+    drawer.classList.add('hidden');
+  }
+}
+
+window.respondToNotif = async function(notificationId, action) {
+  try {
+    const res = await fetch('/api/notifications/respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        notificationId,
+        action,
+        hospitalId: state.loggedInHospitalId
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      showToast('✓ Transfer approved! Ambulance dispatched with oxygen cylinders.', 'success');
+      await loadInitialData();
+      await loadNotifications();
+      await loadAuditHistory();
+    }
+  } catch (err) {
+    showToast('Error responding to notification: ' + err.message, 'error');
+  }
+};
+
+// 11. Interactive Google Maps Setup
 function initMap() {
   const mapContainer = document.getElementById('hospitalMap');
   if (!mapContainer || state.map) return;
 
-  // Initialize map centered on District 04 (NYC / Metro coordinates)
   state.map = L.map('hospitalMap', {
     center: [40.725, -73.985],
     zoom: 12,
     zoomControl: true
   });
 
-  // OpenStreetMap Tile Layer (Clean, crisp, free, zero API key needed)
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 18
   }).addTo(state.map);
 
-  // Add all hospital pins
   Object.keys(HOSPITALS_DATA).forEach(hospId => {
     const h = HOSPITALS_DATA[hospId];
     
-    // Custom SVG circle marker
     const marker = L.circleMarker([h.lat, h.lng], {
       radius: 10,
       fillColor: '#10b981',
@@ -583,11 +785,9 @@ function initMap() {
     state.mapMarkers[hospId] = marker;
   });
 
-  // Select initial hospital
   selectHospitalOnMap('HOSP-01');
 }
 
-// Update Map markers based on live hospital oxygen stock levels
 function updateMapData() {
   if (!state.map || !state.predictions) return;
 
@@ -596,16 +796,15 @@ function updateMapData() {
   state.predictions.forEach(p => {
     const marker = state.mapMarkers[p.hospitalId];
     if (marker) {
-      let color = '#10b981'; // green surplus
-      if (p.currentStock <= 20) color = '#dc2626'; // red critical
-      else if (p.timeToShortageHours !== null && p.timeToShortageHours <= 6) color = '#f59e0b'; // amber
-      else if (p.hospitalId === highest) color = '#059669'; // dark green leader
+      let color = '#10b981';
+      if (p.currentStock <= 20) color = '#dc2626';
+      else if (p.timeToShortageHours !== null && p.timeToShortageHours <= 6) color = '#f59e0b';
+      else if (p.hospitalId === highest) color = '#059669';
 
       marker.setStyle({ fillColor: color });
     }
   });
 
-  // Draw active ambulance transfer route line if recommendations exist
   if (state.recommendations && state.recommendations.length > 0) {
     const topRec = state.recommendations[0];
     const donor = HOSPITALS_DATA[topRec.donorId];
@@ -624,7 +823,6 @@ function updateMapData() {
   }
 }
 
-// Select a hospital and center map
 window.selectHospitalOnMap = function(hospitalId) {
   state.selectedHospitalId = hospitalId;
   const h = HOSPITALS_DATA[hospitalId];
@@ -636,7 +834,6 @@ window.selectHospitalOnMap = function(hospitalId) {
     if (marker) marker.openPopup();
   }
 
-  // Update Map Selected Card
   const nameEl = document.getElementById('mapCardHospitalName');
   const areaEl = document.getElementById('mapCardArea');
   const addrEl = document.getElementById('mapCardAddress');
@@ -658,12 +855,10 @@ window.selectHospitalOnMap = function(hospitalId) {
   const pred = state.predictions.find(p => p.hospitalId === hospitalId);
   if (stockEl) stockEl.textContent = `${pred ? Math.round(pred.currentStock) : 100} Cylinders`;
 
-  // Update Google Maps External Links
   if (gmapsBtn) {
     gmapsBtn.href = `https://www.google.com/maps/search/?api=1&query=${h.lat},${h.lng}`;
   }
   if (gmapsDirBtn) {
-    // Navigate from Primary Donor (Hospital B) to this hospital
     const donor = HOSPITALS_DATA['HOSP-02'];
     gmapsDirBtn.href = `https://www.google.com/maps/dir/?api=1&origin=${donor.lat},${donor.lng}&destination=${h.lat},${h.lng}`;
   }
@@ -673,7 +868,7 @@ window.selectHospitalOnMap = function(hospitalId) {
   }
 };
 
-// 10. Audit History Table
+// 12. Audit History Table
 async function loadAuditHistory() {
   try {
     const res = await fetch('/api/transfers/history');
@@ -791,6 +986,51 @@ function escapeQuotes(str) {
 }
 
 function setupEventListeners() {
+  // Hospital Login Switcher handler
+  const loginSelect = document.getElementById('userHospitalLoginSelect');
+  if (loginSelect) {
+    loginSelect.addEventListener('change', async (e) => {
+      state.loggedInHospitalId = e.target.value;
+      const h = getHosp(state.loggedInHospitalId);
+      
+      const label = document.getElementById('scannerActiveHospitalLabel');
+      if (label) label.textContent = `${h.shortName} (${h.fullName})`;
+
+      showToast(`Logged in as ${h.shortName} (${h.fullName})`, 'info');
+      updateQuickScanChips();
+      updateScannerDisplayStock();
+      await loadNotifications();
+      renderStockLevelsTable();
+    });
+  }
+
+  // Barcode Scanner Buttons
+  const btnConsume = document.getElementById('btnScanConsume');
+  if (btnConsume) {
+    btnConsume.addEventListener('click', () => triggerBarcodeScan('CONSUME'));
+  }
+
+  const btnReceive = document.getElementById('btnScanReceive');
+  if (btnReceive) {
+    btnReceive.addEventListener('click', () => triggerBarcodeScan('RECEIVE'));
+  }
+
+  const barcodeInput = document.getElementById('barcodeInput');
+  if (barcodeInput) {
+    barcodeInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') triggerBarcodeScan('CONSUME');
+    });
+  }
+
+  // Notification Bell toggle
+  const btnBell = document.getElementById('btnToggleNotifications');
+  if (btnBell) {
+    btnBell.addEventListener('click', () => {
+      const drawer = document.getElementById('notificationDrawer');
+      if (drawer) drawer.classList.toggle('hidden');
+    });
+  }
+
   // Search input handler
   const searchInput = document.getElementById('searchHospitalsInput');
   if (searchInput) {
@@ -819,7 +1059,7 @@ function setupEventListeners() {
     });
   }
 
-  // Button: Load demo data (resets to default demo baseline)
+  // Button: Load demo data
   const btnDemo = document.getElementById('btnLoadDemoData');
   if (btnDemo) {
     btnDemo.addEventListener('click', async () => {
@@ -831,10 +1071,11 @@ function setupEventListeners() {
       showToast('🔄 Demo baseline loaded successfully.', 'info');
       await loadInitialData();
       await loadAuditHistory();
+      await loadNotifications();
     });
   }
 
-  // Button: Simulate demand (triggers surge to create realistic deficit)
+  // Button: Simulate demand
   const btnSimDemand = document.getElementById('btnSimulateDemand');
   if (btnSimDemand) {
     btnSimDemand.addEventListener('click', async () => {
@@ -848,7 +1089,7 @@ function setupEventListeners() {
     });
   }
 
-  // Button: Detect & transfer (executes the top transfer recommendation immediately)
+  // Button: Detect & transfer
   const btnDetectTransfer = document.getElementById('btnDetectTransfer');
   if (btnDetectTransfer) {
     btnDetectTransfer.addEventListener('click', async () => {

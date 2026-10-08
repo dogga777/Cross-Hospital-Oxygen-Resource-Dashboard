@@ -30,20 +30,50 @@
 </head>
 <body class="bg-[#f0f4f8] text-slate-800 min-h-screen font-sans antialiased">
 
-  <!-- 1. TOP DARK HEADER BANNER (Matching image) -->
+  <!-- 1. TOP DARK HEADER BANNER WITH HOSPITAL LOGIN (Matching image) -->
   <header class="bg-[#242b3b] text-white shadow-md sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex items-center justify-between">
-      <div class="w-20 hidden sm:block"></div>
-      <h1 class="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-white text-center flex-1">
-        Cross-Hospital Oxygen Resource Dashboard
-      </h1>
-      <div class="w-20 flex justify-end">
-        <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">v2.4</span>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
+      
+      <!-- Left: Logo & Title -->
+      <div class="flex items-center space-x-2">
+        <h1 class="text-base sm:text-xl font-bold tracking-tight text-white">
+          Cross-Hospital Oxygen Resource Dashboard
+        </h1>
       </div>
+
+      <!-- Right: User Hospital Login Profile & Cross-Hospital Notification Bell -->
+      <div class="flex items-center space-x-3 text-xs">
+        
+        <!-- Notification Bell (Cross-Hospital Alert Center) -->
+        <button id="btnToggleNotifications" class="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer" title="Cross-Hospital Alerts">
+          <i data-lucide="bell" class="h-4 w-4"></i>
+          <span id="notifBadge" class="hidden absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center animate-pulse">0</span>
+        </button>
+
+        <!-- Hospital User Login Indicator & Switcher -->
+        <div class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 rounded-lg p-1.5 px-3">
+          <div class="h-6 w-6 rounded-full bg-emerald-500 text-slate-900 flex items-center justify-center font-bold text-xs shrink-0">
+            🏥
+          </div>
+          <div class="leading-tight text-left">
+            <span class="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Logged in as:</span>
+            <select id="userHospitalLoginSelect" class="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer border-none p-0 pr-2">
+              <option value="HOSP-01" class="bg-slate-900 text-white">Hospital A (Metro General)</option>
+              <option value="HOSP-02" class="bg-slate-900 text-white">Hospital B (St. Jude Medical)</option>
+              <option value="HOSP-03" class="bg-slate-900 text-white">Hospital C (Riverbank Annex)</option>
+              <option value="HOSP-04" class="bg-slate-900 text-white">Hospital D (Oak Valley)</option>
+              <option value="HOSP-05" class="bg-slate-900 text-white">Hospital E (Mercy Urban)</option>
+              <option value="HOSP-06" class="bg-slate-900 text-white">Hospital F (Highland Specialty)</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+
     </div>
 
     <!-- 2. SUB-HEADER ACTION CONTROLS & STATUS BAR (Matching image) -->
-    <div class="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-2.5">
+    <div class="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-2">
       <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
         
         <!-- Network Connection Status -->
@@ -55,36 +85,35 @@
         <!-- Action Buttons (Exact buttons from screenshot) -->
         <div class="flex items-center flex-wrap gap-2">
           
-          <!-- Load demo data button -->
           <button id="btnLoadDemoData" class="px-3 py-1.5 rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold text-xs shadow-sm transition cursor-pointer">
             Load demo data
           </button>
 
-          <!-- Simulate demand button (Blue) -->
           <button id="btnSimulateDemand" class="px-3 py-1.5 rounded-md bg-[#244b7a] hover:bg-[#1d3d63] text-white font-semibold text-xs shadow-sm transition cursor-pointer">
             Simulate demand
           </button>
 
-          <!-- Detect & transfer button (Green) -->
           <button id="btnDetectTransfer" class="px-3.5 py-1.5 rounded-md bg-[#16a34a] hover:bg-[#15803d] text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1">
             <i data-lucide="zap" class="h-3.5 w-3.5"></i>
             <span>Detect & transfer</span>
           </button>
 
-          <!-- Map Shortcut Button -->
+          <a href="#barcodeScannerSection" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-300 font-bold text-xs flex items-center gap-1 transition">
+            <i data-lucide="scan-line" class="h-3.5 w-3.5"></i>
+            <span>Scan Cylinder Barcode</span>
+          </a>
+
           <a href="#mapSection" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-medium text-xs flex items-center gap-1 transition">
             <i data-lucide="map-pin" class="h-3.5 w-3.5 text-rose-500"></i>
             <span>Google Maps</span>
           </a>
 
-          <!-- Download Manifests CSV -->
-          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-teal-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition" title="Download Dispatches CSV">
+          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-teal-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition">
             <i data-lucide="download" class="h-3.5 w-3.5"></i>
             <span>CSV</span>
           </a>
 
-          <!-- Download PDF Report -->
-          <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-emerald-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition" title="Download PDF Report">
+          <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-emerald-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition">
             <i data-lucide="file-text" class="h-3.5 w-3.5"></i>
             <span>PDF</span>
           </a>
@@ -100,6 +129,22 @@
     </div>
   </header>
 
+  <!-- NOTIFICATION DRAWER (Cross-hospital shortage notifications) -->
+  <div id="notificationDrawer" class="hidden bg-amber-50 border-b border-amber-300 px-4 py-3 shadow-md">
+    <div class="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+      <div class="flex items-center space-x-3">
+        <span class="p-2 bg-amber-500 text-white rounded-lg font-bold">🔔</span>
+        <div>
+          <h4 class="font-extrabold text-amber-900 text-sm">Cross-Hospital Alert Center</h4>
+          <p id="drawerNotifMessage" class="text-amber-800 mt-0.5">No active shortage notifications for your facility.</p>
+        </div>
+      </div>
+      <div id="drawerNotifActions" class="flex items-center space-x-2">
+        <!-- Buttons injected dynamically -->
+      </div>
+    </div>
+  </div>
+
   <!-- MAIN CONTAINER -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
 
@@ -108,7 +153,6 @@
       
       <!-- Card 1: Current oxygen levels -->
       <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
-        <!-- Green vertical block/cylinder icon -->
         <div class="h-12 w-6 rounded bg-[#2e7d32] flex-shrink-0 shadow-sm"></div>
         <div>
           <div class="text-xs text-slate-500 font-medium">Current oxygen levels</div>
@@ -121,7 +165,6 @@
 
       <!-- Card 2: Predicting shortages -->
       <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
-        <!-- Red rounded block with exclamation mark ! -->
         <div class="h-12 w-10 rounded-lg bg-[#e53935] text-white flex-shrink-0 flex items-center justify-center font-black text-xl shadow-sm">
           !
         </div>
@@ -136,7 +179,6 @@
 
       <!-- Card 3: Transfer activity -->
       <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
-        <!-- Two horizontal arrows icon ⇄ -->
         <div class="h-12 w-12 rounded-lg bg-slate-100 text-slate-700 flex-shrink-0 flex items-center justify-center font-bold text-2xl shadow-sm">
           ⇄
         </div>
@@ -166,10 +208,9 @@
           <p class="text-xs text-slate-500 mt-0.5">Oxygen inventory, usage rate, and estimated time until shortage.</p>
         </div>
 
-        <!-- Search input & Risk dropdown (Matching screenshot) -->
+        <!-- Search input & Risk dropdown -->
         <div class="flex items-center space-x-2">
           
-          <!-- Search input -->
           <div class="relative">
             <input 
               id="searchHospitalsInput" 
@@ -180,7 +221,6 @@
             <i data-lucide="search" class="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-2.5 pointer-events-none"></i>
           </div>
 
-          <!-- Risk level dropdown -->
           <select 
             id="riskFilterSelect" 
             class="py-1.5 px-3 rounded-lg border border-slate-300 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
@@ -212,7 +252,6 @@
         </table>
       </div>
 
-      <!-- Table Footer (Matching screenshot) -->
       <div class="p-3 px-5 bg-[#fafbfd] border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
         <span id="hospitalCountBadge">6 hospitals</span>
         <span class="italic text-[11px]">Forecasts are estimates, not clinical guidance.</span>
@@ -220,7 +259,123 @@
 
     </section>
 
-    <!-- 6. GOOGLE MAPS LOCATION FINDER & AMBULANCE DISPATCH ROUTE -->
+    <!-- 6. BARCODE SCANNER & CYLINDER UNIQUE ID STOCK TRACKER (NEW FEATURE) -->
+    <section id="barcodeScannerSection" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+      
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+        <div>
+          <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="barcode" class="h-5 w-5 text-indigo-600"></i>
+            Cylinder Barcode Scanner & Real-Time Stock Verifier
+          </h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Every oxygen cylinder has a unique Barcode & Serial ID. Scan to consume in ward or receive delivery; automatically verifies stock remaining and detects shortages.
+          </p>
+        </div>
+
+        <div class="flex items-center space-x-2 text-xs">
+          <span class="text-slate-500">Scanning for:</span>
+          <span id="scannerActiveHospitalLabel" class="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">
+            Hospital A (Metro General)
+          </span>
+        </div>
+      </div>
+
+      <!-- Scanner Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        
+        <!-- Left: Interactive Scanner Controls -->
+        <div class="lg:col-span-2 space-y-4 bg-slate-50 rounded-xl p-4 border border-slate-200">
+          
+          <div class="space-y-1.5">
+            <label class="text-xs font-bold text-slate-700 block">
+              Enter or Scan Cylinder Barcode ID:
+            </label>
+            <div class="flex gap-2">
+              <input 
+                id="barcodeInput" 
+                type="text" 
+                placeholder="e.g. O2-METRO-001 or O2-JUDE-014" 
+                value="O2-METRO-001"
+                class="flex-1 px-3 py-2 rounded-lg border border-slate-300 font-mono text-sm uppercase text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white"
+              />
+              <button id="btnScanConsume" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="arrow-down-circle" class="h-4 w-4"></i>
+                <span>Scan & Dispense (Use)</span>
+              </button>
+              <button id="btnScanReceive" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1.5">
+                <i data-lucide="arrow-up-circle" class="h-4 w-4"></i>
+                <span>Scan & Intake (Add)</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Quick Scan Clickable Barcode Chips -->
+          <div>
+            <span class="text-[11px] font-semibold text-slate-500 block mb-1.5">Quick-Scan Barcode Presets:</span>
+            <div id="quickScanChips" class="flex flex-wrap gap-1.5 text-xs">
+              <!-- Dynamically populated chips -->
+            </div>
+          </div>
+
+          <!-- Laser Barcode Graphic Preview -->
+          <div class="relative bg-white rounded-lg p-3 border border-slate-200 flex items-center justify-between overflow-hidden">
+            <div class="flex items-center space-x-3">
+              <div class="text-2xl font-black font-mono tracking-widest text-slate-800 select-all" id="barcodeSvgText">
+                || | ||| || ||| | ||
+              </div>
+              <div class="text-xs">
+                <span id="barcodeActiveSerial" class="font-mono font-bold text-slate-800 text-sm">O2-METRO-001</span>
+                <span class="text-[11px] text-slate-400 block">40L Type-D Medical O2 &middot; 2000 PSI</span>
+              </div>
+            </div>
+
+            <!-- Animated Laser Scan Line -->
+            <div class="flex items-center space-x-1.5 text-[11px] font-mono text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
+              <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
+              <span>Scanner Ready</span>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right: Scanned Result & Live Stock Counter -->
+        <div id="scanResultCard" class="bg-indigo-50/60 rounded-xl border border-indigo-200 p-4 flex flex-col justify-between space-y-3">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">Scan Stock Verification</span>
+            <h3 id="scanResultTitle" class="text-base font-extrabold text-slate-800 mt-1">Ready to Scan</h3>
+            <p id="scanResultSub" class="text-xs text-slate-600 mt-0.5">Scan a barcode to check remaining cylinders and update ward inventory.</p>
+
+            <div class="mt-3 space-y-2 bg-white p-3 rounded-lg border border-indigo-100 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500">Cylinders Left in Hospital:</span>
+                <span id="scanResultStockLeft" class="font-bold text-indigo-700 text-base font-mono">-- Cylinders</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500">Cylinder Status:</span>
+                <span id="scanResultStatus" class="font-bold text-emerald-700">IN_STOCK</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500">Ward Location:</span>
+                <span id="scanResultWard" class="text-slate-700">ICU Ward A</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span class="text-slate-500">Gas Purity / Pressure:</span>
+                <span id="scanResultPurity" class="text-slate-700">99.5% &middot; 2050 PSI</span>
+              </div>
+            </div>
+          </div>
+
+          <div id="scanNotificationBadge" class="hidden p-2.5 rounded-lg bg-rose-100 border border-rose-300 text-rose-800 text-[11px] font-bold leading-tight">
+            🚨 SHORTAGE DETECTED! Hospital reserve &le; 20 cylinders. Emergency notification sent to Hospital B!
+          </div>
+        </div>
+
+      </div>
+
+    </section>
+
+    <!-- 7. GOOGLE MAPS LOCATION FINDER & AMBULANCE DISPATCH ROUTE -->
     <section id="mapSection" class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
       
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
@@ -234,10 +389,8 @@
           </p>
         </div>
 
-        <!-- Location Search & Google Maps External Actions -->
         <div class="flex items-center flex-wrap gap-2 text-xs">
           
-          <!-- Hospital Select to Pan Map -->
           <select id="mapHospitalSelector" class="py-1.5 px-3 rounded-lg border border-slate-300 text-xs text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer">
             <option value="">Select Hospital to Find on Map...</option>
             <option value="HOSP-01">Hospital A (Metro General) - Downtown</option>
@@ -248,13 +401,11 @@
             <option value="HOSP-06">Hospital F (Crestview) - Foothills</option>
           </select>
 
-          <!-- Button: Open in Google Maps -->
           <a id="btnOpenInGoogleMaps" href="https://www.google.com/maps/search/?api=1&query=40.7128,-74.0060" target="_blank" class="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition">
             <i data-lucide="external-link" class="h-3.5 w-3.5"></i>
             <span>Open in Google Maps</span>
           </a>
 
-          <!-- Button: Google Maps Directions Route -->
           <a id="btnGoogleMapsDirections" href="https://www.google.com/maps/dir/?api=1&origin=40.7484,-73.9857&destination=40.7128,-74.0060" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm transition">
             <i data-lucide="navigation" class="h-3.5 w-3.5"></i>
             <span>Ambulance Route in Google Maps</span>
@@ -263,14 +414,11 @@
         </div>
       </div>
 
-      <!-- Interactive Map & Active Dispatch Sidebar Grid -->
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
         
-        <!-- Interactive Leaflet / Google Map Viewport -->
         <div class="lg:col-span-2 rounded-xl border border-slate-200 overflow-hidden shadow-inner relative">
           <div id="hospitalMap"></div>
           
-          <!-- Map Legend Overlay -->
           <div class="absolute bottom-3 left-3 z-[400] bg-white/95 backdrop-blur-sm border border-slate-200 rounded-lg p-2.5 shadow-md text-[11px] space-y-1">
             <div class="font-bold text-slate-800 text-[10px] uppercase tracking-wider mb-1">Status Legend</div>
             <div class="flex items-center gap-2">
@@ -292,7 +440,6 @@
           </div>
         </div>
 
-        <!-- Selected Hospital / Route Details Card -->
         <div id="mapSelectedHospitalCard" class="bg-slate-50 rounded-xl border border-slate-200 p-4 flex flex-col justify-between text-xs space-y-3">
           <div>
             <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Selected Facility Details</span>
@@ -331,10 +478,10 @@
 
     </section>
 
-    <!-- 7. BOTTOM 2-COLUMN SPLIT (Matching image) -->
+    <!-- 8. BOTTOM 2-COLUMN SPLIT (Shortage Predictor & Transfer Recommendations) -->
     <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       
-      <!-- LEFT COLUMN: SHORTAGE PREDICTOR (Matching image) -->
+      <!-- LEFT COLUMN: SHORTAGE PREDICTOR -->
       <div class="space-y-2">
         <div>
           <h2 class="text-lg font-bold text-slate-800">Shortage Predictor</h2>
@@ -346,7 +493,7 @@
         </div>
       </div>
 
-      <!-- RIGHT COLUMN: TRANSFER RECOMMENDATIONS (Matching image) -->
+      <!-- RIGHT COLUMN: TRANSFER RECOMMENDATIONS -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <div>
@@ -363,7 +510,7 @@
 
     </section>
 
-    <!-- 8. TRANSFER MANIFEST HISTORY LOG & AUDIT REPORT -->
+    <!-- 9. TRANSFER MANIFEST HISTORY LOG & AUDIT REPORT -->
     <section class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100">
         <div>
@@ -386,7 +533,6 @@
         </div>
       </div>
 
-      <!-- Manifest Table -->
       <div class="overflow-x-auto rounded-lg border border-slate-200">
         <table class="w-full text-left text-xs text-slate-700">
           <thead class="bg-slate-100 text-slate-700 font-semibold border-b border-slate-200 uppercase tracking-wider text-[11px]">
@@ -412,10 +558,8 @@
 
   </main>
 
-  <!-- TOAST NOTIFICATION CONTAINER -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 
-  <!-- APPLICATION JAVASCRIPT -->
   <script src="/js/app.js"></script>
   <script>
     lucide.createIcons();

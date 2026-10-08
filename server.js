@@ -326,6 +326,95 @@ app.post('/api/simulation/set-stock', async (req, res) => {
   }
 });
 
+// Authentication: Hospital Staff Login
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { hospitalId } = req.body;
+    const db = getDb();
+    const hospital = await db.collection('hospitals').findOne({ id: hospitalId || 'HOSP-01' });
+    if (!hospital) return res.status(404).json({ error: 'Hospital not found' });
+    res.json({
+      success: true,
+      hospital: {
+        id: hospital.id,
+        name: hospital.name,
+        type: hospital.type,
+        address: hospital.location?.address,
+        phone: hospital.location?.phone,
+        currentStock: hospital.currentStock,
+        capacity: hospital.capacity
+      },
+      token: `AUTH-${hospital.id}-${Date.now()}`
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cylinders Inventory
+const { processBarcodeScan, getCylinders, getNotifications, respondToNotification, seedCylindersIfEmpty } = require('./src/cylinders/manager');
+
+app.get('/api/cylinders', async (req, res) => {
+  try {
+    const { hospitalId, status } = req.query;
+    const list = await getCylinders(hospitalId || 'HOSP-01', status);
+    res.json(list);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Barcode Scan Endpoint (Updates inventory, detects shortage, triggers notifications)
+app.post('/api/cylinders/scan', async (req, res) => {
+  try {
+    const { serialNumber, action, hospitalId } = req.body;
+    if (!serialNumber) return res.status(400).json({ error: 'Missing serialNumber' });
+    const result = await processBarcodeScan(serialNumber, action || 'CONSUME', hospitalId);
+    
+    broadcastWs({
+      type: 'CYLINDER_SCANNED',
+      data: result
+    });
+
+    if (result.emergencyTriggered) {
+      broadcastWs({
+        type: 'NOTIFICATION_RECEIVED',
+        notification: result.notification
+      });
+    }
+
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Cross-Hospital Notifications
+app.get('/api/notifications', async (req, res) => {
+  try {
+    const { hospitalId } = req.query;
+    const notifs = await getNotifications(hospitalId);
+    res.json(notifs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Respond to Notification (Approve transfer & send cylinders)
+app.post('/api/notifications/respond', async (req, res) => {
+  try {
+    const { notificationId, action, hospitalId } = req.body;
+    const result = await respondToNotification(notificationId, action || 'APPROVE', hospitalId);
+    broadcastWs({
+      type: 'NOTIFICATION_RESOLVED',
+      data: result
+    });
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Dynamic configuration update (API Key or MongoDB URI)
 app.post('/api/config/update', async (req, res) => {
   try {
@@ -355,6 +444,7 @@ async function bootstrap() {
     console.log('[System] Initializing Cross-Hospital Resource Rebalance System...');
     await connectDb();
     await seedDatabaseIfEmpty();
+    await seedCylindersIfEmpty();
 
     // Generate initial plan & validation
     const rawPlan = await generateRebalancePlan();
