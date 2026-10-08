@@ -18,7 +18,10 @@ function getAiClient(customApiKey = null) {
 async function generateTransferJustification(rec, customApiKey = null) {
   const client = getAiClient(customApiKey);
 
-  const fallbackJustification = `Move ${rec.transferQuantity} units from ${rec.donorName} to ${rec.recipientName} — ${rec.donorName} has ${rec.donorSurplusHours}hrs surplus, ${rec.recipientName} depletes in ${rec.recipientDepletionHours}hrs`;
+  let fallbackJustification = `Move ${rec.transferQuantity} units from ${rec.donorName} to ${rec.recipientName} — ${rec.donorName} has ${rec.donorSurplusHours}hrs surplus, ${rec.recipientName} depletes in ${rec.recipientDepletionHours}hrs`;
+  if (rec.recipientCurrentStock <= 20) {
+    fallbackJustification = `Move ${rec.transferQuantity} units from ${rec.donorName} to ${rec.recipientName} — ${rec.donorName} has ${Math.round(rec.donorCurrentStock)} cylinders (surplus), ${rec.recipientName} has only ${Math.round(rec.recipientCurrentStock)} cylinders left`;
+  }
 
   if (!client) {
     return {

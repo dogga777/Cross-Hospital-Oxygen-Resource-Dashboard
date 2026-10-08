@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cross-Hospital Resource Rebalance | HN-AI-05</title>
+  <title>Cross-Hospital Oxygen Rebalance | District 04 Command</title>
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <!-- Chart.js CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <!-- Lucide Icons -->
+  <!-- Lucide Icons CDN -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <link rel="stylesheet" href="/css/style.css">
   <script>
@@ -18,14 +16,6 @@
         extend: {
           fontFamily: {
             sans: ['Inter', 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
-          },
-          colors: {
-            brand: {
-              50: '#f0fdfa',
-              500: '#14b8a6',
-              600: '#0d9488',
-              700: '#0f766e',
-            }
           }
         }
       }
@@ -35,450 +25,197 @@
 <body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-teal-500 selection:text-white">
 
   <!-- TOP HEADER -->
-  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+  <header class="border-b border-slate-800 bg-slate-900/95 sticky top-0 z-40 shadow-md">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col md:flex-row md:items-center justify-between gap-3">
       
-      <!-- Brand & Project Details -->
-      <div class="flex items-center space-x-3.5">
-        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-teal-500 via-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-teal-500/20">
-          <i data-lucide="activity" class="h-5 w-5 text-white"></i>
+      <!-- Brand & Title -->
+      <div class="flex items-center space-x-3">
+        <div class="h-10 w-10 rounded-xl bg-teal-500 text-slate-950 flex items-center justify-center font-black shadow-lg shadow-teal-500/20">
+          <i data-lucide="activity" class="h-6 w-6"></i>
         </div>
         <div>
           <div class="flex items-center space-x-2">
-            <h1 class="text-base font-bold text-white tracking-tight">Cross-Hospital Resource Rebalance</h1>
-            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-teal-950 text-teal-400 border border-teal-500/30">
-              HN-AI-05
-            </span>
+            <h1 class="text-base font-bold text-white tracking-tight">Cross-Hospital Oxygen Rebalance</h1>
+            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-teal-950 text-teal-400 border border-teal-500/30">HN-AI-05</span>
           </div>
           <p class="text-xs text-slate-400">
-            Track: <span class="text-slate-300 font-medium">Gemini &bull; MongoDB &bull; Render</span> &bull; District 04 Oxygen Fleet
+            Rule: When any hospital has <strong>&le; 20 cylinders left</strong>, it directly contacts the hospital with the <strong>most cylinders</strong> for immediate transfer.
           </p>
         </div>
       </div>
 
-      <!-- Live Engine Badges & Controls -->
-      <div class="flex items-center space-x-2.5">
-        <!-- Live stream pulse -->
-        <div class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-slate-800/90 border border-slate-700/80 text-xs">
-          <span class="relative flex h-2 w-2">
-            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          <span id="streamStatusText" class="text-slate-300 font-medium text-[11px]">Live Feed (3s)</span>
+      <!-- Live Indicator, CSV/PDF Export & Action Buttons -->
+      <div class="flex items-center flex-wrap gap-2">
+        <!-- Live stream indicator -->
+        <div class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800 border border-slate-700 text-xs text-emerald-400">
+          <span class="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          <span id="streamStatusText" class="text-[11px] font-medium">Live Feed (3s)</span>
         </div>
 
-        <!-- MongoDB Pill -->
-        <div id="mongoStatusPill" class="hidden md:flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-slate-800/90 border border-slate-700/80 text-xs text-slate-300">
-          <i data-lucide="database" class="h-3.5 w-3.5 text-emerald-400"></i>
-          <span id="mongoStatusText" class="text-[11px]">MongoDB Store</span>
-        </div>
+        <!-- Download CSV Button -->
+        <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 hover:text-white border border-teal-500/40 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm" title="Download Dispatches CSV">
+          <i data-lucide="download" class="h-3.5 w-3.5"></i>
+          <span>Download .CSV</span>
+        </a>
 
-        <!-- Gemini Pill -->
-        <div id="geminiStatusPill" class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-purple-950/60 border border-purple-500/40 text-xs text-purple-300">
-          <i data-lucide="sparkles" class="h-3.5 w-3.5 text-purple-400"></i>
-          <span id="geminiStatusText" class="text-[11px]">Gemini 3.8 Flash</span>
-        </div>
+        <!-- Download Hospital Inventory CSV -->
+        <a href="/api/hospitals/export/csv" download="district_hospitals_oxygen_inventory.csv" class="hidden sm:flex px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-cyan-300 hover:text-white border border-cyan-500/40 text-xs font-semibold items-center gap-1.5 transition shadow-sm" title="Download Hospitals Inventory CSV">
+          <i data-lucide="table" class="h-3.5 w-3.5"></i>
+          <span>Hospitals .CSV</span>
+        </a>
 
-        <!-- Quick 1-Click Demo Buttons -->
-        <button id="btnQuickSurge" class="px-3 py-1.5 rounded-lg bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/40 text-rose-300 hover:text-rose-200 text-xs font-semibold flex items-center gap-1.5 transition" title="Trigger a mass-casualty crisis at Metro General">
-          <i data-lucide="flame" class="h-3.5 w-3.5 text-rose-400"></i>
-          <span>Simulate Crisis</span>
+        <!-- Download PDF Report Button -->
+        <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-teal-500/20">
+          <i data-lucide="file-text" class="h-3.5 w-3.5"></i>
+          <span>Download .PDF</span>
+        </a>
+
+        <!-- 1-Click Crisis Simulation Button (Drops to <= 20 cyl) -->
+        <button id="btnTriggerLowStockCrisis" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-rose-600/30 cursor-pointer" title="Simulate Riverbank dropping to 12 cylinders">
+          <i data-lucide="alert-octagon" class="h-3.5 w-3.5"></i>
+          <span>Simulate &le;20 Crisis</span>
         </button>
 
-        <button id="btnQuickReset" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white border border-slate-800 transition" title="Reset all hospital stocks">
+        <!-- Reset Button -->
+        <button id="btnQuickReset" class="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white border border-slate-700 transition" title="Reset all hospital stocks to baseline">
           <i data-lucide="rotate-ccw" class="h-4 w-4"></i>
-        </button>
-
-        <button id="btnSettings" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white border border-slate-800 transition" title="Settings & API Keys">
-          <i data-lucide="settings" class="h-4 w-4"></i>
         </button>
       </div>
 
     </div>
   </header>
 
-  <!-- MAIN WRAPPER -->
+  <!-- MAIN CONTAINER -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
 
-    <!-- PLAIN ENGLISH EXPLAINER BANNER (Clear & Understandable) -->
-    <section class="bg-gradient-to-r from-teal-950/50 via-slate-900 to-indigo-950/40 border border-teal-500/20 rounded-2xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-md">
-      <div class="flex items-start space-x-3">
-        <div class="p-2 rounded-xl bg-teal-500/10 border border-teal-500/30 text-teal-400 mt-0.5">
-          <i data-lucide="compass" class="h-5 w-5"></i>
-        </div>
-        <div>
-          <h2 class="text-sm font-semibold text-white flex items-center gap-2">
-            District Cross-Hospital Logistics Intelligence
-            <span class="text-[10px] font-normal px-2 py-0.5 rounded bg-teal-900/60 text-teal-300 border border-teal-500/20">Active Monitoring</span>
-          </h2>
-          <p class="text-xs text-slate-300 mt-0.5 leading-relaxed">
-            Standard hospital dashboards only show stock in silos. This system scans all 6 district hospitals, predicts shortages <strong>hours in advance</strong> using linear burn models, and uses <strong>Google Gemini</strong> to recommend immediate supply transfers from surplus facilities.
-          </p>
-        </div>
-      </div>
-
-      <!-- Action status pill -->
-      <div id="districtBannerStatus" class="shrink-0 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-700 text-xs text-slate-300">
-        <span class="h-2 w-2 rounded-full bg-emerald-400"></span>
-        <span id="districtBannerText">Monitoring 6 Facilities</span>
-      </div>
+    <!-- 1. EMERGENCY TRANSFER DISPATCH ALERT (Highlighted when any hospital has <= 20 cylinders) -->
+    <section id="emergencyDispatchSection" class="space-y-4">
+      <!-- Populated dynamically via JS -->
     </section>
 
-    <!-- 4 KEY NUMBERS (Clean, Large, Readable) -->
-    <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <!-- 2. QUICK LEADERBOARD: WHICH HOSPITAL HAS MORE CYLINDERS? -->
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
       
-      <!-- 1. Total Stock -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-        <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
-          <span>District Oxygen Stock</span>
-          <i data-lucide="cylinder" class="h-4 w-4 text-cyan-400"></i>
-        </div>
-        <div class="mt-2 flex items-baseline space-x-2">
-          <span id="kpiTotalStock" class="text-2xl font-bold text-white tracking-tight">--</span>
-          <span class="text-xs text-slate-400">cylinders</span>
-        </div>
-        <div class="mt-1 text-xs text-slate-400 flex items-center justify-between">
-          <span>Net Consumption:</span>
-          <span id="kpiNetBurnRate" class="font-semibold text-amber-400">-- cyl/hr</span>
-        </div>
-        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
-          <div id="kpiTotalStockBar" class="bg-cyan-500 h-full transition-all duration-500" style="width: 50%"></div>
-        </div>
-      </div>
-
-      <!-- 2. Hospitals in Shortage -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-        <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
-          <span>Facilities at Risk (&lt;3.5h)</span>
-          <i data-lucide="alert-triangle" class="h-4 w-4 text-rose-400"></i>
-        </div>
-        <div class="mt-2 flex items-baseline space-x-2">
-          <span id="kpiCriticalCount" class="text-2xl font-bold text-rose-400 tracking-tight">--</span>
-          <span class="text-xs text-slate-400">of 6 hospitals</span>
-        </div>
-        <div class="mt-1 text-xs text-slate-400 flex items-center justify-between">
-          <span>Shortest Runway:</span>
-          <span id="kpiShortestRunway" class="font-semibold text-rose-300">-- hrs</span>
-        </div>
-        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
-          <div id="kpiCriticalBar" class="bg-rose-500 h-full transition-all duration-500" style="width: 33%"></div>
-        </div>
-      </div>
-
-      <!-- 3. Available Surplus -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-        <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
-          <span>Safe Transfer Surplus</span>
-          <i data-lucide="share-2" class="h-4 w-4 text-emerald-400"></i>
-        </div>
-        <div class="mt-2 flex items-baseline space-x-2">
-          <span id="kpiSurplusUnits" class="text-2xl font-bold text-emerald-400 tracking-tight">--</span>
-          <span class="text-xs text-slate-400">ready units</span>
-        </div>
-        <div class="mt-1 text-xs text-slate-400 flex items-center justify-between">
-          <span>Donor Safety:</span>
-          <span class="text-emerald-300 font-medium">&ge; 6.0h reserve</span>
-        </div>
-        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
-          <div id="kpiSurplusBar" class="bg-emerald-500 h-full transition-all duration-500" style="width: 70%"></div>
-        </div>
-      </div>
-
-      <!-- 4. Model Accuracy -->
-      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
-        <div class="flex items-center justify-between text-xs text-slate-400 font-medium">
-          <span>AI Forecast Accuracy</span>
-          <i data-lucide="check-check" class="h-4 w-4 text-indigo-400"></i>
-        </div>
-        <div class="mt-2 flex items-baseline space-x-2">
-          <span id="kpiValidationScore" class="text-2xl font-bold text-indigo-300 tracking-tight">--</span>
-          <span class="text-xs text-emerald-400 font-medium">Validated</span>
-        </div>
-        <div class="mt-1 text-xs text-slate-400 flex items-center justify-between">
-          <span>Held-Out Error (MAPE):</span>
-          <span id="kpiMapeScore" class="font-semibold text-indigo-300">--%</span>
-        </div>
-        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
-          <div class="bg-indigo-500 h-full" style="width: 98%"></div>
-        </div>
-      </div>
-
-    </section>
-
-    <!-- CORE 2-COLUMN SECTION -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-      <!-- LEFT COLUMN: AI REBALANCE PLAN (PROMINENT, CLEAN, ACTIONABLE) -->
-      <section class="lg:col-span-6 space-y-4">
-        
+      <!-- Card A: Hospital with the MOST Cylinders -->
+      <div class="bg-gradient-to-br from-emerald-950/40 via-slate-900 to-slate-900 border border-emerald-500/40 rounded-2xl p-5 shadow-lg relative overflow-hidden">
         <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <span class="h-2.5 w-2.5 rounded-full bg-purple-400 animate-pulse"></span>
-              AI Rebalance Plan
-            </h2>
-            <p class="text-xs text-slate-400">Actionable transfers with Gemini-generated clinical justifications</p>
-          </div>
-          <span id="recCountLabel" class="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-950/80 text-purple-300 border border-purple-500/30">
-            -- Plans Ready
+          <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+            <i data-lucide="trophy" class="h-4 w-4"></i> Facility with the MOST Cylinders (Primary Donor)
+          </span>
+          <span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold">
+            Highest Surplus
           </span>
         </div>
-
-        <!-- Recommendations Container -->
-        <div id="recommendationsList" class="space-y-4">
-          <!-- Dynamically populated recommendation cards -->
-          <div class="p-8 text-center text-slate-400 bg-slate-900/60 border border-slate-800 rounded-2xl">
-            <i data-lucide="loader" class="h-6 w-6 animate-spin mx-auto mb-2 text-purple-400"></i>
-            Computing optimal district rebalance...
-          </div>
-        </div>
-
-      </section>
-
-      <!-- RIGHT COLUMN: 6 HOSPITAL FLEET CARDS (CLEAN & EASY TO READ) -->
-      <section class="lg:col-span-6 space-y-4">
-
-        <div class="flex items-center justify-between">
+        <div class="mt-3 flex items-baseline justify-between">
           <div>
-            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-              <i data-lucide="building-2" class="h-5 w-5 text-teal-400"></i>
-              District Hospital Fleet
-            </h2>
-            <p class="text-xs text-slate-400">Live telemetry, current stock levels, and time-to-depletion</p>
+            <h3 id="leaderDonorName" class="text-lg font-extrabold text-white">St. Jude Medical Center</h3>
+            <p id="leaderDonorAddress" class="text-xs text-slate-400 mt-0.5">350 Northwood Blvd, Northside Medical Park</p>
+            <p id="leaderDonorPhone" class="text-xs text-emerald-300 font-mono mt-0.5">📞 +1 (555) 018-7740</p>
           </div>
-          <span class="text-xs text-slate-400">6 Facilities Monitored</span>
-        </div>
-
-        <!-- Hospital Cards Container -->
-        <div id="hospitalFleetGrid" class="space-y-3">
-          <!-- Dynamically populated hospital cards -->
-          <div class="p-8 text-center text-slate-400 bg-slate-900/60 border border-slate-800 rounded-2xl">
-            <i data-lucide="loader" class="h-6 w-6 animate-spin mx-auto mb-2 text-teal-400"></i>
-            Loading hospital fleet telemetry...
+          <div class="text-right">
+            <span id="leaderDonorStock" class="text-3xl font-black text-emerald-400 font-mono">248</span>
+            <span class="text-xs text-slate-400 block font-medium">cylinders in stock</span>
           </div>
         </div>
+        <div class="mt-3 pt-3 border-t border-slate-800 text-xs text-slate-300 flex items-center justify-between">
+          <span>Surplus Capacity Available:</span>
+          <span id="leaderDonorSurplus" class="font-bold text-emerald-300 font-mono">+130 Safe to Donate</span>
+        </div>
+      </div>
 
-      </section>
+      <!-- Card B: District Overview & Rule Status -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <span class="flex items-center gap-1.5 text-cyan-400">
+              <i data-lucide="shield-check" class="h-4 w-4"></i> Emergency Safety Threshold
+            </span>
+            <span class="text-slate-300">&le; 20 Cylinders Rule</span>
+          </div>
+          <p class="text-xs text-slate-300 mt-2 leading-relaxed">
+            Whenever any facility drops to <strong>20 or fewer cylinders</strong>, an immediate dispatch order connects it directly with the hospital holding the most cylinders. An ambulance with a dedicated driver is routed automatically.
+          </p>
+        </div>
+        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
+          <span class="text-slate-400">Total District Inventory:</span>
+          <span id="statTotalDistrictStock" class="font-bold font-mono text-cyan-400 text-sm">-- Cylinders</span>
+        </div>
+      </div>
 
-    </div>
+    </section>
 
-    <!-- BOTTOM SECTION: HOW THE MODEL WORKS & HELD-OUT ACCURACY (CLEAR EXPLANATION) -->
-    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-6 shadow-md space-y-5">
-      
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-800 gap-3">
+    <!-- 3. ALL 6 HOSPITALS (CLEAN & UNDERSTANDABLE STATUS CARDS) -->
+    <section class="space-y-3">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-base font-bold text-white flex items-center gap-2">
+            <i data-lucide="building-2" class="h-5 w-5 text-teal-400"></i>
+            Current Hospital Oxygen Stock
+          </h2>
+          <p class="text-xs text-slate-400">Monitor all 6 district hospitals &mdash; stock levels, addresses, and contacts</p>
+        </div>
+        <span class="text-xs text-slate-400 font-mono">6 Facilities Tracked</span>
+      </div>
+
+      <!-- 6 Hospital Cards Grid -->
+      <div id="hospitalsGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <!-- Dynamically rendered via JS -->
+      </div>
+    </section>
+
+    <!-- 4. AMBULANCE DISPATCH & TRANSFER MANIFEST HISTORY -->
+    <section class="bg-slate-900/90 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-4">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
         <div>
           <h3 class="text-base font-bold text-white flex items-center gap-2">
-            <i data-lucide="line-chart" class="h-5 w-5 text-indigo-400"></i>
-            Model Validation & Held-Out Accuracy Check
+            <i data-lucide="truck" class="h-5 w-5 text-amber-400"></i>
+            Ambulance Dispatch & Transfer Manifest History
           </h3>
           <p class="text-xs text-slate-400 mt-0.5">
-            Transparent backtesting proving the linear predictor against unseen (held-out) simulated data
+            Log of all oxygen transfers showing ambulance numbers, delivery drivers, contact numbers, and locations.
           </p>
         </div>
 
-        <!-- Tab switches -->
-        <div class="flex items-center bg-slate-800/80 p-1 rounded-xl border border-slate-700 text-xs">
-          <button id="tabBtnHeldOut" class="px-3.5 py-1.5 rounded-lg bg-teal-500 text-slate-950 font-semibold transition">
-            Held-Out Accuracy Check
-          </button>
-          <button id="tabBtnTrends" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition">
-            District Telemetry Trends
-          </button>
-          <button id="tabBtnAudit" class="px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition">
-            Audit & Transfer Log
-          </button>
+        <div class="flex items-center space-x-2">
+          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 border border-teal-500/30 text-xs font-semibold flex items-center gap-1.5 transition">
+            <i data-lucide="download" class="h-3.5 w-3.5"></i> Download .CSV
+          </a>
+          <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-3 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition">
+            <i data-lucide="file-text" class="h-3.5 w-3.5"></i> Download .PDF
+          </a>
         </div>
       </div>
 
-      <!-- Tab 1: Held-Out Cross-Validation Panel -->
-      <div id="tabContentHeldOut" class="space-y-5">
-        
-        <!-- Plain English explanation box -->
-        <div class="bg-slate-950/70 border border-slate-800 rounded-xl p-3.5 text-xs text-slate-300 flex items-start gap-3">
-          <i data-lucide="info" class="h-4 w-4 text-cyan-400 mt-0.5 shrink-0"></i>
-          <p>
-            <strong>How the accuracy check works:</strong> To verify our model before trusting it with medical transfers, we take recent telemetry and split it into <strong>70% Training</strong> (used to fit the depletion slope) and <strong>30% Held-Out Test</strong> (unseen future data). We then compare the model's prediction against actual telemetry to compute the Mean Absolute Percentage Error (MAPE).
-          </p>
-        </div>
-
-        <!-- Validation Stat Cards Row -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400">Average Prediction Error</span>
-            <div id="valDistrictMape" class="text-xl font-bold font-mono text-emerald-400 mt-0.5">--%</div>
-            <span class="text-[11px] text-slate-500">MAPE (Lower is better)</span>
-          </div>
-
-          <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400">Residual Variance</span>
-            <div id="valDistrictRmse" class="text-xl font-bold font-mono text-indigo-300 mt-0.5">-- units</div>
-            <span class="text-[11px] text-slate-500">Root Mean Square Error</span>
-          </div>
-
-          <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400">Temporal Split</span>
-            <div class="text-xl font-bold font-mono text-teal-300 mt-0.5">70% / 30%</div>
-            <span class="text-[11px] text-slate-500">Train vs Held-Out</span>
-          </div>
-
-          <div class="bg-slate-950 border border-slate-800/80 rounded-xl p-3">
-            <span class="text-xs text-slate-400">Dispatch Status</span>
-            <div id="valConfidenceRating" class="text-xl font-bold text-emerald-400 mt-0.5">HIGH CONFIDENCE</div>
-            <span class="text-[11px] text-slate-500">Statistically validated</span>
-          </div>
-        </div>
-
-        <!-- Interactive Chart Visualizer -->
-        <div class="space-y-3">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div class="flex items-center space-x-2">
-              <label for="valHospitalSelect" class="text-xs text-slate-400 font-medium">Select Hospital to Inspect:</label>
-              <select id="valHospitalSelect" class="bg-slate-800 text-xs text-white rounded-lg px-3 py-1.5 border border-slate-700 outline-none focus:border-teal-500 cursor-pointer">
-                <!-- Dynamically loaded -->
-              </select>
-            </div>
-
-            <div class="flex items-center space-x-4 text-xs">
-              <span class="flex items-center gap-1.5 text-slate-300">
-                <span class="h-2.5 w-2.5 rounded-full bg-cyan-400 inline-block"></span>
-                Actual Held-Out Telemetry
-              </span>
-              <span class="flex items-center gap-1.5 text-slate-300">
-                <span class="h-2.5 w-2.5 rounded-full bg-indigo-500 inline-block"></span>
-                Model Predicted Depletion Trend
-              </span>
-            </div>
-          </div>
-
-          <div class="h-64 w-full bg-slate-950/70 rounded-xl p-3 border border-slate-800 relative">
-            <canvas id="heldOutChart"></canvas>
-          </div>
-        </div>
-
+      <!-- Table -->
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
+            <tr>
+              <th class="py-3 px-3">Date & Manifest</th>
+              <th class="py-3 px-3">Units</th>
+              <th class="py-3 px-3">From (Hospital with More)</th>
+              <th class="py-3 px-3">To (Hospital in Need)</th>
+              <th class="py-3 px-3">Ambulance No.</th>
+              <th class="py-3 px-3">Delivery Driver & Phone</th>
+              <th class="py-3 px-3">Gemini Clinical Justification</th>
+              <th class="py-3 px-3">Status</th>
+            </tr>
+          </thead>
+          <tbody id="historyTableBody" class="divide-y divide-slate-800/60">
+            <tr>
+              <td colspan="8" class="text-center py-8 text-slate-500">Loading transfer history...</td>
+            </tr>
+          </tbody>
+        </table>
       </div>
-
-      <!-- Tab 2: District Telemetry Trends Panel -->
-      <div id="tabContentTrends" class="hidden space-y-3">
-        <p class="text-xs text-slate-400">Real-time stock trajectory across all 6 hospitals simultaneously over time:</p>
-        <div class="h-72 w-full bg-slate-950/70 rounded-xl p-3 border border-slate-800 relative">
-          <canvas id="districtTrendChart"></canvas>
-        </div>
-      </div>
-
-      <!-- Tab 3: Transfer & Audit Log Panel -->
-      <div id="tabContentAudit" class="hidden space-y-4">
-        
-        <!-- Export & Action Toolbar -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-950/80 p-3.5 rounded-xl border border-slate-800">
-          <div>
-            <h4 class="text-sm font-bold text-white flex items-center gap-2">
-              <i data-lucide="file-spreadsheet" class="h-4 w-4 text-teal-400"></i>
-              Official Oxygen Rebalance Transfer Manifests
-            </h4>
-            <p class="text-xs text-slate-400 mt-0.5">
-              Complete dispatch audit trail including hospital locations, ambulance vehicle plates, delivery personnel, and contacts.
-            </p>
-          </div>
-
-          <!-- Download Buttons -->
-          <div class="flex items-center space-x-2 shrink-0">
-            <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-teal-300 hover:text-white border border-teal-500/30 text-xs font-semibold flex items-center gap-1.5 transition shadow-sm">
-              <i data-lucide="download" class="h-3.5 w-3.5"></i>
-              Download .CSV
-            </a>
-            <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-3.5 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition shadow-md shadow-teal-500/20">
-              <i data-lucide="file-text" class="h-3.5 w-3.5"></i>
-              Download .PDF Report
-            </a>
-          </div>
-        </div>
-
-        <!-- Detailed Table -->
-        <div class="overflow-x-auto rounded-xl border border-slate-800">
-          <table class="w-full text-left text-xs text-slate-300">
-            <thead class="bg-slate-950 text-slate-400 font-semibold border-b border-slate-800 uppercase tracking-wider text-[11px]">
-              <tr>
-                <th class="py-3 px-3">Manifest / Time</th>
-                <th class="py-3 px-3">Units</th>
-                <th class="py-3 px-3">Source Facility & Location</th>
-                <th class="py-3 px-3">Destination Facility & Location</th>
-                <th class="py-3 px-3">Ambulance No.</th>
-                <th class="py-3 px-3">Delivery Personnel & Contact</th>
-                <th class="py-3 px-3">Gemini Clinical Justification</th>
-                <th class="py-3 px-3">Status</th>
-              </tr>
-            </thead>
-            <tbody id="auditTableBody" class="divide-y divide-slate-800/60">
-              <tr>
-                <td colspan="8" class="text-center py-6 text-slate-500 font-sans">Loading transfer manifests...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
     </section>
 
   </main>
 
-  <!-- SETTINGS MODAL -->
-  <div id="settingsModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-        <div class="flex items-center space-x-2 text-teal-400 font-bold">
-          <i data-lucide="sliders" class="h-5 w-5"></i>
-          <h3>System Settings</h3>
-        </div>
-        <button id="btnCloseSettingsModal" class="text-slate-400 hover:text-white">
-          <i data-lucide="x" class="h-5 w-5"></i>
-        </button>
-      </div>
-
-      <div class="space-y-4 text-xs">
-        <div class="space-y-1.5">
-          <label class="font-medium text-slate-300 flex items-center gap-1.5">
-            <i data-lucide="sparkles" class="h-4 w-4 text-purple-400"></i>
-            Google Gemini API Key:
-          </label>
-          <input type="password" id="inputGeminiApiKey" placeholder="AIzaSy..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono outline-none focus:border-purple-500">
-          <p class="text-slate-500 text-[11px]">Optional. Powers live clinical justifications via gemini-3.8-flash.</p>
-        </div>
-
-        <div class="space-y-1.5">
-          <label class="font-medium text-slate-300 flex items-center gap-1.5">
-            <i data-lucide="database" class="h-4 w-4 text-emerald-400"></i>
-            MongoDB Connection URI:
-          </label>
-          <input type="text" id="inputMongoUri" placeholder="mongodb+srv://user:pass@cluster.mongodb.net" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-white font-mono outline-none focus:border-emerald-500">
-          <p class="text-slate-500 text-[11px]">Leave empty to continue using embedded in-memory MongoDB store.</p>
-        </div>
-
-        <div class="space-y-1.5">
-          <label class="font-medium text-slate-300">Live Telemetry Speed:</label>
-          <div class="grid grid-cols-3 gap-2">
-            <button data-speed="1000" class="btn-speed py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:border-teal-500 font-mono">1.0s (Fast)</button>
-            <button data-speed="3000" class="btn-speed py-1.5 rounded-lg bg-teal-600 text-white font-mono">3.0s (Default)</button>
-            <button data-speed="6000" class="btn-speed py-1.5 rounded-lg bg-slate-800 text-slate-300 border border-slate-700 hover:border-teal-500 font-mono">6.0s (Slow)</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="flex justify-between items-center pt-3 border-t border-slate-800">
-        <button id="btnResetSimulation" class="px-3 py-1.5 rounded-lg bg-slate-800 text-rose-400 hover:bg-rose-950/50 text-xs font-medium border border-rose-900/30">
-          Reset All Stocks
-        </button>
-        <button id="btnSaveSettings" class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs transition">
-          Save Settings
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TOAST NOTIFICATION CONTAINER -->
+  <!-- TOAST CONTAINER -->
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 
-  <!-- CLIENT SCRIPTS -->
-  <script src="/js/charts.js"></script>
+  <!-- APPLICATION JAVASCRIPT -->
   <script src="/js/app.js"></script>
   <script>
     lucide.createIcons();

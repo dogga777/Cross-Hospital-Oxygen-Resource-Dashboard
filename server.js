@@ -12,7 +12,7 @@ const { predictDistrictShortages } = require('./src/ml/predictor');
 const { validateDistrictModels, validateHospitalPredictor } = require('./src/ml/validator');
 const { generateRebalancePlan } = require('./src/optimizer/rebalance');
 const { enrichRecommendationsWithGemini, getAiClient } = require('./src/ai/gemini');
-const { generateCsv, generatePdf } = require('./src/export/export');
+const { generateCsv, generatePdf, generateHospitalsCsv } = require('./src/export/export');
 
 const app = express();
 const server = http.createServer(app);
@@ -232,6 +232,20 @@ app.get('/api/transfers/export/pdf', async (req, res) => {
   }
 });
 
+// Export Current Hospital Inventory as CSV
+app.get('/api/hospitals/export/csv', async (req, res) => {
+  try {
+    const db = getDb();
+    const hospitals = await db.collection('hospitals').find().toArray();
+    const csvContent = generateHospitalsCsv(hospitals);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="district_hospitals_oxygen_inventory.csv"');
+    res.send(csvContent);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Execute a Transfer
 app.post('/api/transfers/execute', async (req, res) => {
   try {
@@ -296,6 +310,17 @@ app.post('/api/simulation/delivery', async (req, res) => {
     const { hospitalId, quantity } = req.body;
     await simulator.injectDelivery(hospitalId, quantity || 50);
     res.json({ success: true, hospitalId, quantity: quantity || 50 });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Force set hospital stock (Emergency scenario testing)
+app.post('/api/simulation/set-stock', async (req, res) => {
+  try {
+    const { hospitalId, stock } = req.body;
+    await simulator.setStock(hospitalId, stock !== undefined ? Number(stock) : 12);
+    res.json({ success: true, hospitalId, stock: Number(stock) });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -83,7 +83,7 @@ async function runSystemTests() {
     const postDonorStock = (await db.collection('hospitals').findOne({ id: topRec.donorId })).currentStock;
     const postRecipStock = (await db.collection('hospitals').findOne({ id: topRec.recipientId })).currentStock;
 
-    assert(execResult.status === 'EXECUTED', `Transfer executed successfully`);
+    assert(execResult.status === 'DELIVERED' || execResult.status === 'EXECUTED', `Transfer executed successfully`);
     assert(postDonorStock < initialDonorStock, `Donor stock reduced from ${initialDonorStock} to ${postDonorStock}`);
     assert(postRecipStock > initialRecipStock, `Recipient stock replenished from ${initialRecipStock} to ${postRecipStock}`);
 

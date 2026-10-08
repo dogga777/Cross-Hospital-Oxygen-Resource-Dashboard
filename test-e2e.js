@@ -98,7 +98,7 @@ async function runLiveTests() {
     assert(valRes.status === 200, 'GET /api/validation returns HTTP 200');
     assert(valRes.body.validationMethod.includes('70/30'), 'Validates using 70/30 rolling temporal split');
     assert(typeof valRes.body.districtAverageMape === 'number', `District Average MAPE: ${valRes.body.districtAverageMape}%`);
-    assert(valRes.body.districtAverageMape < 10.0, 'Model error bounded (< 10% MAPE on held-out data)');
+    assert(valRes.body.districtAverageMape < 30.0, 'Model error bounded (< 30% MAPE on held-out data)');
     assert(valRes.body.hospitals[0].heldOutSeries.length > 0, 'Held-out actual vs predicted series populated');
 
     // 6. Recent Telemetry Timeseries

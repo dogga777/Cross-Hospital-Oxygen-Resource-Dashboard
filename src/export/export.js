@@ -207,7 +207,52 @@ function generatePdf(transferLogs = [], res) {
   doc.end();
 }
 
+// Generate CSV for current hospital stock inventory
+function generateHospitalsCsv(hospitals = []) {
+  const headers = [
+    'Hospital ID',
+    'Hospital Name',
+    'Role / Type',
+    'Cylinders Left',
+    'Capacity',
+    'Percentage Remaining',
+    'Status',
+    'Hourly Burn Rate (cyl/hr)',
+    'District Address / Location',
+    'Contact Phone',
+    'Dispatch Officer'
+  ];
+
+  function escapeCsvCell(val) {
+    if (val === null || val === undefined) return '""';
+    const str = String(val).replace(/"/g, '""');
+    return `"${str}"`;
+  }
+
+  const rows = hospitals.map(h => {
+    const pct = Math.round((h.currentStock / h.capacity) * 100);
+    const isEmergency = h.currentStock <= 20;
+    let status = isEmergency ? 'CRITICAL (≤ 20 CYLINDERS LEFT)' : (h.status || 'NORMAL');
+    return [
+      escapeCsvCell(h.id),
+      escapeCsvCell(h.name),
+      escapeCsvCell(h.type),
+      escapeCsvCell(Math.round(h.currentStock)),
+      escapeCsvCell(h.capacity),
+      escapeCsvCell(`${pct}%`),
+      escapeCsvCell(status),
+      escapeCsvCell(h.currentBurnRate || h.baselineBurnRate || 0),
+      escapeCsvCell(h.location?.address || 'District 04'),
+      escapeCsvCell(h.location?.phone || 'N/A'),
+      escapeCsvCell(h.location?.dispatchContact || 'N/A')
+    ];
+  });
+
+  return [headers.join(','), ...rows.map(r => r.join(','))].join('\r\n');
+}
+
 module.exports = {
   generateCsv,
-  generatePdf
+  generatePdf,
+  generateHospitalsCsv
 };

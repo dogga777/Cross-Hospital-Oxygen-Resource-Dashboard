@@ -77,6 +77,21 @@ class HospitalStreamSimulator {
     console.log(`[Simulator] Delivery received at ${hosp.name}: +${quantity} cylinders (New stock: ${newStock})`);
   }
 
+  // Force-set stock for emergency testing
+  async setStock(hospitalId, stock) {
+    const db = getDb();
+    const stockVal = Math.max(1, Math.round(stock * 10) / 10);
+    const hosp = await db.collection('hospitals').findOne({ id: hospitalId });
+    if (!hosp) throw new Error('Hospital not found');
+    const pressurePsi = Math.round(300 + (stockVal / hosp.capacity) * 1900);
+    await db.collection('hospitals').updateOne(
+      { id: hospitalId },
+      { $set: { currentStock: stockVal, pressurePsi } }
+    );
+    console.log(`[Simulator] Stock manually set for ${hosp.name}: ${stockVal} cylinders`);
+    await this.step();
+  }
+
   // Execute a cross-hospital rebalance transfer
   async executeTransfer(donorId, recipientId, quantity, geminiJustification = '') {
     const db = getDb();

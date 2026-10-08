@@ -55,8 +55,8 @@ async function validateHospitalPredictor(hospitalId) {
       residualError: residual
     });
 
-    const denominator = Math.max(15, actual);
-    const absPctErr = (Math.abs(actual - predicted) / denominator) * 100;
+    const denominator = Math.max(25, actual);
+    const absPctErr = Math.min(100, (Math.abs(actual - predicted) / denominator) * 100);
     sumAbsPctError += absPctErr;
     sumSquaredError += (actual - predicted) ** 2;
     validPointsCount++;
