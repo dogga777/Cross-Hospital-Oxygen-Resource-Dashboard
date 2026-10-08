@@ -1059,22 +1059,6 @@ function setupEventListeners() {
     });
   }
 
-  // Button: Load demo data
-  const btnDemo = document.getElementById('btnLoadDemoData');
-  if (btnDemo) {
-    btnDemo.addEventListener('click', async () => {
-      await fetch('/api/simulation/control', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reset' })
-      });
-      showToast('🔄 Demo baseline loaded successfully.', 'info');
-      await loadInitialData();
-      await loadAuditHistory();
-      await loadNotifications();
-    });
-  }
-
   // Button: Simulate demand
   const btnSimDemand = document.getElementById('btnSimulateDemand');
   if (btnSimDemand) {
