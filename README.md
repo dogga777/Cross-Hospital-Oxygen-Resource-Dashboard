@@ -1,13 +1,13 @@
 # HN-AI-05: Cross-Hospital Resource Rebalance
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Active-emerald?style=for-the-badge&logo=google-chrome)](https://tough-carrots-hear.loca.lt)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Active-emerald?style=for-the-badge&logo=google-chrome)](https://ripe-showers-appear.loca.lt)
 [![GitHub Repo](https://img.shields.io/badge/GitHub-Repository-blue?style=for-the-badge&logo=github)](https://github.com/dogga777/Cross-Hospital-Oxygen-Resource-Dashboard)
 [![Track](https://img.shields.io/badge/Track-Gemini%20·%20MongoDB%20·%20Render-purple?style=for-the-badge)](https://render.com)
 
-> 🌐 **Live Public URL:** **[https://tough-carrots-hear.loca.lt](https://tough-carrots-hear.loca.lt)** *(Tunnel Password: `103.249.205.130`)*  
+> 🌐 **Live Public URL (Localtunnel):** **[https://ripe-showers-appear.loca.lt](https://ripe-showers-appear.loca.lt)** *(Tunnel Password / Endpoint IP: `103.249.205.130`)*  
 > 💻 **Local Live Instance:** `http://localhost:3000`  
 > 🏥 **District Command:** Metro District 04 &mdash; Critical Oxygen Logistics Grid  
-> 🚀 **Deploy on Render:** Import `https://github.com/dogga777/Cross-Hospital-Oxygen-Resource-Dashboard` on [Render.com](https://dashboard.render.com/select-repo?type=web) for free 24/7 cloud hosting!
+> 🚀 **Deploy on Render (24/7 Permanent URL):** Import `https://github.com/dogga777/Cross-Hospital-Oxygen-Resource-Dashboard` on [Render.com](https://dashboard.render.com/select-repo?type=web) for permanent free cloud hosting!
 
 ---
 
