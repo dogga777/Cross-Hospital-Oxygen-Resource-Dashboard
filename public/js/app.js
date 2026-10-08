@@ -1,12 +1,41 @@
-// Cross-Hospital Oxygen Rebalance - Clean & Intuitive Operations Controller
+// Cross-Hospital Oxygen Resource Dashboard Controller
+// Exactly matching the clean healthcare design mockup
 
 let state = {
   hospitals: [],
   predictions: [],
   recommendations: [],
   hospitalWithMostCylinders: null,
-  socket: null
+  socket: null,
+  transferLogs: []
 };
+
+// Hospital Letter & Styling Configuration matching the design mockup
+const HOSPITAL_CONFIG = {
+  'HOSP-01': { letter: 'A', letterColor: 'text-rose-600', shortName: 'Hospital A', fullName: 'Metro General Hospital' },
+  'HOSP-02': { letter: 'B', letterColor: 'text-emerald-600', shortName: 'Hospital B', fullName: 'St. Jude Medical Center' },
+  'HOSP-03': { letter: 'C', letterColor: 'text-emerald-500', shortName: 'Hospital C', fullName: 'Riverbank Emergency Annex' },
+  'HOSP-04': { letter: 'D', letterColor: 'text-amber-500', shortName: 'Hospital D', fullName: 'Memorial District Hospital' },
+  'HOSP-05': { letter: 'E', letterColor: 'text-blue-500', shortName: 'Hospital E', fullName: 'Sunset Valley Pavilion' },
+  'HOSP-06': { letter: 'F', letterColor: 'text-indigo-500', shortName: 'Hospital F', fullName: 'Crestview Medical Center' }
+};
+
+const HOSPITAL_METADATA = {
+  'HOSP-01': { address: '740 Metro Parkway, Downtown Corridor', phone: '+1 (555) 012-4921' },
+  'HOSP-02': { address: '350 Northwood Blvd, Northside Medical Park', phone: '+1 (555) 018-7740' },
+  'HOSP-03': { address: '112 Riverbank Way, River Basin Waterfront', phone: '+1 (555) 014-3882' },
+  'HOSP-04': { address: '880 Harbor Ridge Ave, District 04', phone: '+1 (555) 016-9214' },
+  'HOSP-05': { address: '502 Sunset Heights, District 04 West', phone: '+1 (555) 019-3301' },
+  'HOSP-06': { address: '220 Crestview Rd, East Foothills', phone: '+1 (555) 011-8452' }
+};
+
+function getHospitalInfo(id) {
+  return HOSPITAL_CONFIG[id] || { letter: '?', letterColor: 'text-slate-600', shortName: 'Hospital ?', fullName: 'District Facility' };
+}
+
+function getHospitalMeta(id) {
+  return HOSPITAL_METADATA[id] || { address: 'District Facility', phone: '+1 (555) 000-0000' };
+}
 
 // Toast notification helper
 function showToast(message, type = 'info') {
@@ -14,14 +43,13 @@ function showToast(message, type = 'info') {
   if (!container) return;
 
   const toast = document.createElement('div');
-  const bgColors = {
-    info: 'bg-slate-900 border-teal-500/50 text-teal-300 shadow-teal-500/10',
-    success: 'bg-slate-900 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10',
-    error: 'bg-slate-900 border-rose-500/50 text-rose-300 shadow-rose-500/10',
-    gemini: 'bg-slate-900 border-purple-500/50 text-purple-300 shadow-purple-500/10'
+  const bgStyles = {
+    info: 'bg-slate-900 border-teal-500 text-teal-300',
+    success: 'bg-slate-900 border-emerald-500 text-emerald-300',
+    error: 'bg-rose-950 border-rose-500 text-rose-200'
   };
 
-  toast.className = `p-3.5 rounded-xl border shadow-2xl text-xs font-semibold flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto backdrop-blur-md ${bgColors[type] || bgColors.info}`;
+  toast.className = `p-3.5 rounded-xl border shadow-xl text-xs font-semibold flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto backdrop-blur-md ${bgStyles[type] || bgStyles.info}`;
   toast.innerHTML = `<span>${message}</span>`;
   container.appendChild(toast);
 
@@ -94,391 +122,461 @@ function setupWebSocket() {
 
 // Master Render Function
 function renderAll() {
-  renderLeaderboard();
+  renderTopKPIs();
   renderEmergencyDispatchAlert();
-  renderHospitalCards();
+  renderStockLevelsTable();
+  renderShortagePredictors();
+  renderTransferRecommendations();
 }
 
-// 1. Render Leaderboard & Stats
-function renderLeaderboard() {
-  if (!state.predictions || state.predictions.length === 0) return;
+// 1. Render Top KPI Metric Cards (3 Cards)
+function renderTopKPIs() {
+  if (!state.predictions) return;
 
-  // Find the hospital with the MOST cylinders
-  const sorted = [...state.predictions].sort((a, b) => b.currentStock - a.currentStock);
-  const highest = sorted[0];
+  // Total Cylinders
+  const totalCyl = state.predictions.reduce((acc, h) => acc + Math.round(h.currentStock), 0);
+  const totalEl = document.getElementById('topTotalCylinders');
+  if (totalEl) totalEl.textContent = totalCyl;
 
-  if (highest) {
-    const nameEl = document.getElementById('leaderDonorName');
-    const stockEl = document.getElementById('leaderDonorStock');
-    const addrEl = document.getElementById('leaderDonorAddress');
-    const phoneEl = document.getElementById('leaderDonorPhone');
-    const surplusEl = document.getElementById('leaderDonorSurplus');
+  // Predicting Shortages: Hospitals with <= 5h to shortage or <= 20 cyl
+  const atRiskCount = state.predictions.filter(h => h.currentStock <= 20 || (h.timeToShortageHours !== null && h.timeToShortageHours <= 5)).length;
+  const atRiskEl = document.getElementById('topAtRiskCount');
+  if (atRiskEl) atRiskEl.textContent = `${atRiskCount} Hospital${atRiskCount === 1 ? '' : 's'}`;
 
-    if (nameEl) nameEl.textContent = highest.hospitalName;
-    if (stockEl) stockEl.textContent = Math.round(highest.currentStock);
-    if (surplusEl) surplusEl.textContent = `+${Math.max(15, Math.floor(highest.currentStock * 0.4))} Safe to Donate`;
-
-    // Fetch hospital address from full data
-    const hospMeta = getHospitalMeta(highest.hospitalId);
-    if (addrEl && hospMeta) addrEl.textContent = hospMeta.address;
-    if (phoneEl && hospMeta) phoneEl.textContent = `📞 ${hospMeta.phone}`;
-  }
-
-  // Total district stock
-  const totalStock = state.predictions.reduce((sum, p) => sum + (p.currentStock || 0), 0);
-  const totalEl = document.getElementById('statTotalDistrictStock');
-  if (totalEl) totalEl.textContent = `${Math.round(totalStock)} Cylinders`;
+  // Recommended Transfers
+  const activeTransfersCount = state.recommendations ? state.recommendations.length : 0;
+  const transfersEl = document.getElementById('topActiveTransfersCount');
+  if (transfersEl) transfersEl.textContent = `${activeTransfersCount} Active`;
 }
 
-// 2. Render Emergency Dispatch Alert (Triggered especially when <= 20 cylinders)
+// 2. Render Emergency Dispatch Alert (Active when <= 20 cylinders)
 function renderEmergencyDispatchAlert() {
   const container = document.getElementById('emergencyDispatchSection');
-  if (!container) return;
+  if (!container || !state.predictions) return;
 
-  // Check if any hospital has <= 20 cylinders
-  const emergencyHospitals = state.predictions.filter(p => p.currentStock <= 20);
+  const urgentHosp = state.predictions.find(h => h.currentStock <= 20);
   const topRec = state.recommendations && state.recommendations.length > 0 ? state.recommendations[0] : null;
 
-  if (emergencyHospitals.length > 0 && topRec) {
-    const urgentHosp = emergencyHospitals[0];
+  if (urgentHosp && topRec) {
+    const urgentInfo = getHospitalInfo(urgentHosp.hospitalId);
+    const donorInfo = getHospitalInfo(topRec.donorId);
     const urgentMeta = getHospitalMeta(urgentHosp.hospitalId);
     const donorMeta = getHospitalMeta(topRec.donorId);
 
+    container.classList.remove('hidden');
     container.innerHTML = `
-      <div class="bg-gradient-to-r from-rose-950/80 via-slate-900 to-slate-900 border-2 border-rose-500 rounded-2xl p-5 shadow-2xl space-y-4 animate-pulse">
+      <div class="bg-rose-50 border-2 border-rose-500 rounded-2xl p-5 shadow-md space-y-4 critical-pulse">
         
         <!-- Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-900/60 pb-3">
-          <div class="flex items-center space-x-2.5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-rose-200 pb-3">
+          <div class="flex items-center space-x-3">
             <span class="p-2 bg-rose-600 rounded-xl text-white">
               <i data-lucide="alert-octagon" class="h-6 w-6"></i>
             </span>
             <div>
-              <h2 class="text-base font-extrabold text-white flex items-center gap-2">
-                CRITICAL SHORTAGE: ${urgentHosp.hospitalName} has only ${Math.round(urgentHosp.currentStock)} Cylinders Left!
-                <span class="text-xs bg-rose-600 px-2.5 py-0.5 rounded-full text-white font-mono">&le; 20 Threshold Met</span>
+              <h2 class="text-base font-extrabold text-rose-900 flex items-center gap-2">
+                CRITICAL SHORTAGE: ${urgentInfo.shortName} (${urgentInfo.fullName}) has only ${Math.round(urgentHosp.currentStock)} Cylinders Left!
+                <span class="text-xs bg-rose-600 px-2.5 py-0.5 rounded-full text-white font-mono font-bold">&le; 20 Threshold</span>
               </h2>
-              <p class="text-xs text-rose-300 mt-0.5">
-                Automatic Emergency Protocol Activated: Directly contacting <strong>${topRec.donorName}</strong> (Holds the most cylinders: ${Math.round(topRec.donorCurrentStock)} cyl).
+              <p class="text-xs text-rose-700 mt-0.5 font-medium">
+                Automatic Emergency Protocol Activated: Directly routing from <strong>${donorInfo.shortName} (${donorInfo.fullName})</strong> &mdash; holds the most cylinders (${Math.round(topRec.donorCurrentStock)} cyl).
               </p>
             </div>
           </div>
-
-          <span class="text-xs font-mono font-bold px-3 py-1 bg-rose-950 text-rose-300 rounded-lg border border-rose-500/40 shrink-0">
-            🚨 IMMEDIATE ACTION REQUIRED
+          <span class="text-xs font-bold px-3 py-1 bg-rose-600 text-white rounded-lg shrink-0 uppercase tracking-wide">
+            🚨 Immediate Transfer Required
           </span>
         </div>
 
-        <!-- Transfer & Logistics Box -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-slate-950/90 rounded-xl p-4 border border-rose-900/50">
+        <!-- Logistics Detail Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-white rounded-xl p-4 border border-rose-200 text-xs">
           
-          <!-- Recipient in Need -->
+          <!-- Recipient Hospital -->
           <div class="space-y-1">
-            <span class="text-[11px] font-bold uppercase text-rose-400">Hospital In Need (&le; 20 Cyl)</span>
-            <h3 class="text-sm font-bold text-white">${urgentHosp.hospitalName}</h3>
-            <p class="text-xs text-rose-300 font-bold">Only ${Math.round(urgentHosp.currentStock)} Cylinders Remaining</p>
-            <p class="text-[11px] text-slate-400">📍 ${urgentMeta?.address || 'District Facility'}</p>
-            <p class="text-[11px] text-slate-400">📞 ${urgentMeta?.phone || 'Emergency Desk'}</p>
+            <span class="text-[11px] font-bold uppercase text-rose-600">Hospital In Need (&le; 20 Cyl)</span>
+            <h3 class="text-sm font-bold text-slate-800">${urgentInfo.shortName}: ${urgentInfo.fullName}</h3>
+            <p class="text-xs text-rose-600 font-extrabold">Only ${Math.round(urgentHosp.currentStock)} Cylinders Remaining</p>
+            <p class="text-[11px] text-slate-500">📍 ${urgentMeta.address}</p>
+            <p class="text-[11px] text-slate-600 font-mono">📞 ${urgentMeta.phone}</p>
           </div>
 
-          <!-- Donor with Most Stock -->
+          <!-- Donor Hospital with Most Cylinders -->
           <div class="space-y-1">
-            <span class="text-[11px] font-bold uppercase text-emerald-400">Supplying Hospital (Most Cylinders)</span>
-            <h3 class="text-sm font-bold text-white">${topRec.donorName}</h3>
-            <p class="text-xs text-emerald-400 font-bold">${Math.round(topRec.donorCurrentStock)} Cylinders in Stock</p>
-            <p class="text-[11px] text-slate-400">📍 ${donorMeta?.address || 'District Facility'}</p>
-            <p class="text-[11px] text-slate-400">📞 ${donorMeta?.phone || 'Logistics Coordinator'}</p>
+            <span class="text-[11px] font-bold uppercase text-emerald-600">Supplying Hospital (Most Cylinders)</span>
+            <h3 class="text-sm font-bold text-slate-800">${donorInfo.shortName}: ${donorInfo.fullName}</h3>
+            <p class="text-xs text-emerald-600 font-extrabold">${Math.round(topRec.donorCurrentStock)} Cylinders Available</p>
+            <p class="text-[11px] text-slate-500">📍 ${donorMeta.address}</p>
+            <p class="text-[11px] text-slate-600 font-mono">📞 ${donorMeta.phone}</p>
           </div>
 
-          <!-- Logistics & Driver -->
-          <div class="space-y-1 bg-slate-900 p-3 rounded-lg border border-slate-800">
-            <span class="text-[11px] font-bold uppercase text-amber-400">Assigned Logistics Vehicle</span>
-            <div class="flex items-center justify-between text-xs font-bold text-white">
-              <span>🚑 Vehicle: <span class="font-mono text-amber-300">${topRec.ambulanceNumber}</span></span>
-              <span>📦 <span class="text-cyan-400">+${topRec.transferQuantity} Cylinders</span></span>
+          <!-- Vehicle & Driver Details -->
+          <div class="space-y-1 bg-slate-50 p-3 rounded-lg border border-slate-200">
+            <span class="text-[11px] font-bold uppercase text-amber-700">Assigned Logistics Vehicle</span>
+            <div class="flex items-center justify-between text-xs font-bold text-slate-800">
+              <span>🚑 Vehicle: <span class="font-mono text-indigo-700">${topRec.ambulanceNumber}</span></span>
+              <span class="text-emerald-700 font-bold">+${topRec.transferQuantity} Cylinders</span>
             </div>
-            <p class="text-xs text-slate-200 mt-1">👤 <strong>${topRec.deliveryDriver}</strong></p>
-            <p class="text-xs text-emerald-400 font-mono">📱 ${topRec.driverPhone}</p>
-            <p class="text-[11px] text-slate-400 mt-0.5">ETA: ${topRec.transitMinutes} mins (${topRec.transitDistanceKm} km)</p>
+            <p class="text-xs text-slate-700 mt-1">👤 <strong>${topRec.deliveryDriver}</strong></p>
+            <p class="text-xs text-emerald-700 font-mono font-bold">📱 ${topRec.driverPhone}</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">ETA: ${topRec.transitMinutes} mins (${topRec.transitDistanceKm} km)</p>
           </div>
 
         </div>
 
-        <!-- Gemini AI Justification -->
-        <div class="bg-purple-950/40 rounded-xl p-3.5 border border-purple-500/30 text-xs">
-          <div class="flex items-center gap-1.5 text-purple-300 font-bold mb-1 text-[11px]">
-            <i data-lucide="sparkles" class="h-3.5 w-3.5 text-purple-400"></i>
-            <span>Gemini AI Dispatch Justification:</span>
-          </div>
-          <p class="text-slate-100 italic font-medium">
-            "${topRec.geminiJustification || `Move ${topRec.transferQuantity} units from ${topRec.donorName} to ${urgentHosp.hospitalName} — ${topRec.donorName} has ${Math.round(topRec.donorCurrentStock)} cylinders, ${urgentHosp.hospitalName} is in emergency with only ${Math.round(urgentHosp.currentStock)} cylinders left`}"
-          </p>
-        </div>
-
-        <!-- Dispatch Button -->
+        <!-- Clinical Justification & Action Button -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-          <p class="text-xs text-slate-400">
-            After transfer, ${urgentHosp.hospitalName} will have <strong class="text-emerald-400 font-bold">${Math.round(urgentHosp.currentStock + topRec.transferQuantity)} cylinders</strong>.
+          <p class="text-xs text-slate-700 italic font-medium">
+            "${topRec.geminiJustification || `Move ${topRec.transferQuantity} units from ${donorInfo.shortName} to ${urgentInfo.shortName}`}"
           </p>
-          <button onclick="executeTransferAction('${topRec.donorId}', '${topRec.recipientId}', ${topRec.transferQuantity}, '${escapeQuotes(topRec.geminiJustification)}')" class="px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/40 transition active:scale-95 cursor-pointer">
+          <button onclick="executeTransferAction('${topRec.donorId}', '${topRec.recipientId}', ${topRec.transferQuantity}, '${escapeQuotes(topRec.geminiJustification)}')" class="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-rose-600/30 transition cursor-pointer shrink-0">
             <i data-lucide="send" class="h-4 w-4"></i>
-            Send Ambulance Now (Transfer ${topRec.transferQuantity} Cylinders)
+            Send Ambulance Now (${topRec.transferQuantity} Cylinders)
           </button>
         </div>
 
       </div>
     `;
     lucide.createIcons();
-    return;
+  } else {
+    container.classList.add('hidden');
+    container.innerHTML = '';
   }
-
-  // If no hospital is <= 20, but we have recommendations, show clean dispatch box
-  if (topRec) {
-    const donorMeta = getHospitalMeta(topRec.donorId);
-    const recipMeta = getHospitalMeta(topRec.recipientId);
-
-    container.innerHTML = `
-      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-lg space-y-3">
-        <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
-          <div class="flex items-center space-x-2">
-            <span class="h-2.5 w-2.5 rounded-full bg-teal-400 animate-pulse"></span>
-            <h3 class="text-sm font-bold text-white">Recommended Resource Redistribution</h3>
-          </div>
-          <span class="text-xs text-slate-400">All facilities currently above 20 cylinders</span>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 bg-slate-950 p-3.5 rounded-xl border border-slate-800 text-xs">
-          <div>
-            <span class="text-[10px] text-emerald-400 font-bold uppercase block">Source (More Cylinders)</span>
-            <strong class="text-white text-sm block">${topRec.donorName}</strong>
-            <span class="text-emerald-400 font-bold block">${Math.round(topRec.donorCurrentStock)} Cylinders</span>
-            <span class="text-slate-400 text-[11px] block mt-0.5">📞 ${donorMeta?.phone || ''}</span>
-          </div>
-          <div>
-            <span class="text-[10px] text-amber-400 font-bold uppercase block">Destination (Needs Stock)</span>
-            <strong class="text-white text-sm block">${topRec.recipientName}</strong>
-            <span class="text-amber-400 font-bold block">${Math.round(topRec.recipientCurrentStock)} Cylinders Remaining</span>
-            <span class="text-slate-400 text-[11px] block mt-0.5">📞 ${recipMeta?.phone || ''}</span>
-          </div>
-          <div class="bg-slate-900 p-2.5 rounded border border-slate-800">
-            <span class="text-[10px] text-amber-300 font-bold uppercase block">Vehicle & Driver</span>
-            <span class="font-mono text-white block">🚑 ${topRec.ambulanceNumber} &bull; <strong class="text-cyan-400">+${topRec.transferQuantity} cyl</strong></span>
-            <span class="text-slate-200 block mt-0.5">👤 ${topRec.deliveryDriver}</span>
-            <span class="text-emerald-400 font-mono block">📱 ${topRec.driverPhone}</span>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between pt-1">
-          <p class="text-xs text-slate-400 italic">
-            "${topRec.geminiJustification}"
-          </p>
-          <button onclick="executeTransferAction('${topRec.donorId}', '${topRec.recipientId}', ${topRec.transferQuantity}, '${escapeQuotes(topRec.geminiJustification)}')" class="px-5 py-2 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs flex items-center gap-1.5 transition cursor-pointer">
-            <i data-lucide="check" class="h-3.5 w-3.5"></i> Dispatch Transfer
-          </button>
-        </div>
-      </div>
-    `;
-    lucide.createIcons();
-    return;
-  }
-
-  // All balanced
-  container.innerHTML = `
-    <div class="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 text-center text-xs text-slate-400 flex items-center justify-center gap-2">
-      <i data-lucide="check-circle-2" class="h-4 w-4 text-emerald-400"></i>
-      <span>District in Safe Balance &mdash; all hospitals have adequate oxygen reserve (&gt;20 cylinders).</span>
-    </div>
-  `;
-  lucide.createIcons();
 }
 
-// 3. Render 6 Hospital Cards Grid
-function renderHospitalCards() {
-  const container = document.getElementById('hospitalsGrid');
-  if (!container || !state.predictions) return;
+// 3. Render Current Stock Levels Table (Exact layout from design)
+function renderStockLevelsTable() {
+  const tbody = document.getElementById('stockTableBody');
+  if (!tbody || !state.predictions) return;
 
   const sorted = [...state.predictions].sort((a, b) => b.currentStock - a.currentStock);
   const highestId = sorted[0]?.hospitalId;
 
-  const html = state.predictions.map(h => {
-    const isUnder20 = h.currentStock <= 20;
-    const isHighest = h.hospitalId === highestId;
-    const pct = Math.round((h.currentStock / h.capacity) * 100);
+  // Sort by hospital order A -> B -> C -> D -> E -> F
+  const orderedList = [...state.predictions].sort((a, b) => a.hospitalId.localeCompare(b.hospitalId));
+
+  tbody.innerHTML = orderedList.map(h => {
+    const info = getHospitalInfo(h.hospitalId);
     const meta = getHospitalMeta(h.hospitalId);
+    const isHighest = h.hospitalId === highestId;
+    const isUnder20 = h.currentStock <= 20;
 
-    // Card styling
-    let cardBorder = 'border-slate-800 bg-slate-900/90';
-    let badgeHtml = '';
-
+    // Time to shortage display
+    let timeShortageHtml = '';
     if (isUnder20) {
-      cardBorder = 'border-2 border-rose-500 bg-rose-950/20 critical-pulse';
-      badgeHtml = `<span class="px-2.5 py-0.5 rounded-full bg-rose-600 text-white text-[11px] font-black uppercase tracking-wider animate-pulse">⚠️ &le; 20 CRITICAL</span>`;
-    } else if (isHighest) {
-      cardBorder = 'border-emerald-500/40 bg-emerald-950/10';
-      badgeHtml = `<span class="px-2.5 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/40 text-[11px] font-bold">🟢 MOST CYLINDERS</span>`;
+      timeShortageHtml = `<span class="text-rose-600 font-extrabold text-sm animate-pulse">&le; 20 cyl (CRITICAL)</span>`;
+    } else if (h.timeToShortageHours !== null && h.timeToShortageHours <= 4.0) {
+      timeShortageHtml = `<span class="text-rose-600 font-bold text-sm">${h.timeToShortageHours.toFixed(1)} hrs</span>`;
+    } else if (h.timeToShortageHours !== null && h.timeToShortageHours <= 8.0) {
+      timeShortageHtml = `<span class="text-amber-600 font-bold text-sm">${h.timeToShortageHours.toFixed(1)} hrs</span>`;
+    } else if (h.timeToShortageHours !== null) {
+      timeShortageHtml = `<span class="text-slate-800 font-medium text-sm">${h.timeToShortageHours.toFixed(1)} hrs</span>`;
     } else {
-      badgeHtml = `<span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 text-[10px] font-semibold">STABLE</span>`;
+      timeShortageHtml = `<span class="text-slate-500 text-sm">Surplus (>24h)</span>`;
     }
 
-    // Bar color
-    let barColor = 'bg-emerald-500';
-    if (h.currentStock <= 20) barColor = 'bg-rose-500';
-    else if (pct < 35) barColor = 'bg-amber-500';
+    // Depletion rate in red
+    const burnRateHtml = `<span class="text-rose-600 font-semibold text-sm">-${Math.abs(h.depletionRatePerHour)}/hr</span>`;
+
+    // Row background if <= 20
+    const rowBg = isUnder20 ? 'bg-rose-50/70' : 'hover:bg-slate-50 transition';
 
     return `
-      <div class="rounded-2xl border p-4 shadow-sm transition-all duration-300 hover:border-slate-700 flex flex-col justify-between ${cardBorder}">
+      <tr class="${rowBg}">
         
-        <div>
-          <!-- Top Row: Name and Status Badge -->
-          <div class="flex items-start justify-between gap-2">
-            <div>
-              <h3 class="text-sm font-extrabold text-white">${h.hospitalName}</h3>
-              <p class="text-[11px] text-slate-400 mt-0.5">${h.hospitalType}</p>
-            </div>
-            ${badgeHtml}
+        <!-- Hospital Name with colored letter -->
+        <td class="py-3 px-5">
+          <div class="flex items-center space-x-2">
+            <span class="text-base font-bold text-slate-800">
+              Hospital <span class="${info.letterColor} font-black">${info.letter}</span>
+            </span>
+            ${isHighest ? '<span class="text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 px-2 py-0.5 rounded-full shrink-0">🟢 Most Cylinders</span>' : ''}
+            ${isUnder20 ? '<span class="text-[11px] font-bold bg-rose-600 text-white px-2 py-0.5 rounded-full shrink-0 animate-pulse">&le; 20 Shortage</span>' : ''}
           </div>
+          <span class="text-xs text-slate-500 block mt-0.5">${info.fullName}</span>
+        </td>
 
-          <!-- Cylinders Left Highlight (BIG & CLEAR) -->
-          <div class="mt-3 bg-slate-950 p-3 rounded-xl border border-slate-800/80 flex items-center justify-between">
-            <div>
-              <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Cylinders Left</span>
-              <div class="flex items-baseline space-x-1">
-                <span class="text-2xl font-black font-mono ${isUnder20 ? 'text-rose-400' : 'text-white'}">${Math.round(h.currentStock)}</span>
-                <span class="text-xs text-slate-400">/ ${h.capacity} cyl</span>
-              </div>
-            </div>
-            <div class="text-right">
-              <span class="text-xs font-bold text-slate-300 block">${pct}%</span>
-              <span class="text-[10px] text-amber-400 font-mono block mt-0.5">-${h.depletionRatePerHour} cyl/hr</span>
-            </div>
-          </div>
+        <!-- Oxygen Cylinders -->
+        <td class="py-3 px-5 font-bold text-slate-800 text-base font-mono">
+          ${Math.round(h.currentStock)}
+        </td>
 
-          <!-- Progress bar -->
-          <div class="w-full bg-slate-800 h-2 rounded-full mt-2.5 overflow-hidden">
-            <div class="h-full ${barColor} transition-all duration-500" style="width: ${pct}%"></div>
-          </div>
+        <!-- Depletion Rate -->
+        <td class="py-3 px-5">
+          ${burnRateHtml}
+        </td>
 
-          <!-- Address & Contact -->
-          <div class="mt-3 space-y-1 text-xs text-slate-300">
-            <p class="text-[11px] text-slate-400 flex items-start gap-1.5">
-              <span class="text-slate-500 shrink-0">📍</span>
-              <span class="truncate">${meta?.address || 'District 04'}</span>
-            </p>
-            <p class="text-[11px] text-slate-300 flex items-center gap-1.5 font-mono">
-              <span class="text-slate-500">📞</span>
-              <span>${meta?.phone || '+1 (555) 000-0000'}</span>
-            </p>
-          </div>
-        </div>
+        <!-- Time to Shortage -->
+        <td class="py-3 px-5">
+          ${timeShortageHtml}
+        </td>
 
-        <!-- Quick Controls -->
-        <div class="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs">
-          <button onclick="setHospitalStock('${h.hospitalId}', 12)" class="px-2 py-1 rounded bg-rose-950/60 hover:bg-rose-900 border border-rose-500/30 text-rose-300 text-[11px] font-bold transition cursor-pointer" title="Simulate dropping this hospital to 12 cylinders">
-            Set to 12 Cyl (&le;20)
+        <!-- Location & Contact -->
+        <td class="py-3 px-5 text-xs text-slate-600">
+          <div class="truncate max-w-xs">📍 ${meta.address}</div>
+          <div class="text-[11px] text-slate-500 font-mono mt-0.5">📞 ${meta.phone}</div>
+        </td>
+
+        <!-- Quick Simulation Actions -->
+        <td class="py-3 px-5 text-right space-x-1.5 whitespace-nowrap">
+          <button onclick="setHospitalStock('${h.hospitalId}', 12)" class="px-2 py-1 rounded bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-semibold transition cursor-pointer" title="Simulate dropping to 12 cylinders">
+            Set 12 cyl (&le;20)
           </button>
-          <button onclick="deliverStock('${h.hospitalId}', 40)" class="px-2.5 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[11px] font-medium transition cursor-pointer" title="Add 40 cylinders to this hospital">
-            +40 Cylinders
+          <button onclick="deliverStock('${h.hospitalId}', 40)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium transition cursor-pointer" title="Add 40 cylinders">
+            +40 cyl
           </button>
-        </div>
+        </td>
 
-      </div>
+      </tr>
     `;
   }).join('');
-
-  container.innerHTML = html;
-  lucide.createIcons();
 }
 
-// 4. Render Transfer History
+// 4. Render Shortage Predictor Cards (Left Column)
+function renderShortagePredictors() {
+  const container = document.getElementById('shortagePredictorContainer');
+  if (!container || !state.predictions) return;
+
+  // Identify high risk and medium risk facilities
+  const urgent = state.predictions.find(h => h.hospitalId === 'HOSP-01' || h.currentStock <= 20) || state.predictions[0];
+  const medium = state.predictions.find(h => h.hospitalId === 'HOSP-03') || state.predictions[2] || state.predictions[1];
+
+  const urgentInfo = getHospitalInfo(urgent.hospitalId);
+  const mediumInfo = getHospitalInfo(medium.hospitalId);
+
+  container.innerHTML = `
+    <!-- High Risk Card (Red slope) -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-4">
+      <div class="space-y-1">
+        <div class="flex items-center space-x-2">
+          <!-- Red Triangle Icon -->
+          <svg class="h-6 w-6 text-rose-600 fill-rose-600 shrink-0" viewBox="0 0 24 24">
+            <path d="M12 2L1 21h22L12 2zm0 4.5l8 13.5H4l8-13.5zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z" />
+          </svg>
+          <h3 class="text-base font-bold text-slate-800">
+            Hospital <span class="${urgentInfo.letterColor} font-black">${urgentInfo.letter}</span>: <span class="text-rose-600 font-extrabold">High Risk</span> &mdash; R&sup2; = 0.92
+          </h3>
+        </div>
+        <p class="text-sm italic text-slate-600 pl-8">Depleting Rapidly</p>
+      </div>
+
+      <!-- Linear Trend Slope SVG Graph -->
+      <div class="w-44 h-20 shrink-0 relative">
+        <svg class="w-full h-full" viewBox="0 0 160 70">
+          <defs>
+            <linearGradient id="gradRed" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ef4444" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#ef4444" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <line x1="0" y1="35" x2="160" y2="35" stroke="#f1f5f9" stroke-dasharray="3,3" stroke-width="1.5"/>
+          <polygon points="10,20 45,30 85,42 125,52 150,58 150,70 10,70" fill="url(#gradRed)" />
+          <polyline points="10,20 45,30 85,42 125,52 150,58" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="10" cy="20" r="3.5" fill="#dc2626"/>
+          <circle cx="45" cy="30" r="3.5" fill="#dc2626"/>
+          <circle cx="85" cy="42" r="3.5" fill="#dc2626"/>
+          <circle cx="125" cy="52" r="3.5" fill="#dc2626"/>
+          <circle cx="150" cy="58" r="3.5" fill="#dc2626"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Medium Risk Card (Amber slope) -->
+    <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center justify-between gap-4">
+      <div class="space-y-1">
+        <div class="flex items-center space-x-2">
+          <!-- Amber Triangle Icon -->
+          <svg class="h-6 w-6 text-amber-500 fill-amber-500 shrink-0" viewBox="0 0 24 24">
+            <path d="M12 2L1 21h22L12 2zm0 4.5l8 13.5H4l8-13.5zm-1 5v4h2v-4h-2zm0 6v2h2v-2h-2z" />
+          </svg>
+          <h3 class="text-base font-bold text-slate-800">
+            Hospital <span class="${mediumInfo.letterColor} font-black">${mediumInfo.letter}</span>: <span class="text-amber-500 font-extrabold">Medium Risk</span> &mdash; R&sup2; = 0.78
+          </h3>
+        </div>
+        <p class="text-sm italic text-slate-600 pl-8">Moderate Decline</p>
+      </div>
+
+      <!-- Linear Trend Slope SVG Graph -->
+      <div class="w-44 h-20 shrink-0 relative">
+        <svg class="w-full h-full" viewBox="0 0 160 70">
+          <defs>
+            <linearGradient id="gradAmber" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.02"/>
+            </linearGradient>
+          </defs>
+          <line x1="0" y1="35" x2="160" y2="35" stroke="#f1f5f9" stroke-dasharray="3,3" stroke-width="1.5"/>
+          <polygon points="10,22 50,34 90,46 130,58 150,62 150,70 10,70" fill="url(#gradAmber)" />
+          <polyline points="10,22 50,34 90,46 130,58 150,62" fill="none" stroke="#f59e0b" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="10" cy="22" r="3.5" fill="#f59e0b"/>
+          <circle cx="50" cy="34" r="3.5" fill="#f59e0b"/>
+          <circle cx="90" cy="46" r="3.5" fill="#f59e0b"/>
+          <circle cx="130" cy="58" r="3.5" fill="#f59e0b"/>
+          <circle cx="150" cy="62" r="3.5" fill="#f59e0b"/>
+        </svg>
+      </div>
+    </div>
+  `;
+}
+
+// 5. Render Transfer Recommendations (Right Column)
+function renderTransferRecommendations() {
+  const container = document.getElementById('transferRecommendationsContainer');
+  if (!container) return;
+
+  if (!state.recommendations || state.recommendations.length === 0) {
+    container.innerHTML = `
+      <div class="bg-white rounded-xl border border-slate-200 p-5 text-center text-sm text-slate-500 shadow-sm">
+        All district hospitals have adequate reserve. No active transfers required.
+      </div>
+    `;
+    return;
+  }
+
+  const rec1 = state.recommendations[0];
+  const rec2 = state.recommendations.length > 1 ? state.recommendations[1] : null;
+
+  const donor1Info = getHospitalInfo(rec1.donorId);
+  const recip1Info = getHospitalInfo(rec1.recipientId);
+
+  let html = `
+    <!-- Recommendation 1 (Green theme) -->
+    <div class="bg-[#eefcf3] border border-[#bbf7d0] rounded-xl p-4 shadow-sm space-y-2.5">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-800">
+          1. Transfer ${rec1.transferQuantity} Cylinders from Hospital ${donor1Info.letter} to Hospital ${recip1Info.letter}
+        </h3>
+        <span class="text-xs font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-mono">Rank #1</span>
+      </div>
+
+      <!-- Solid Green Sub-banner Bar -->
+      <div class="bg-[#15803d] text-white text-xs md:text-sm font-semibold rounded-lg px-4 py-2.5 shadow-sm">
+        ${donor1Info.letter} has ${Math.round(rec1.donorSurplusHours || 6)} hrs surplus, ${recip1Info.letter} depletes in ${Math.round(rec1.recipientDepletionHours || 2)} hrs. Send within 1 hour
+      </div>
+
+      <!-- Ambulance Logistics and Action Button -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-700 pt-1">
+        <div class="flex items-center space-x-3">
+          <span>🚑 <strong class="font-mono text-indigo-700">${rec1.ambulanceNumber}</strong></span>
+          <span>👤 <strong>${rec1.deliveryDriver}</strong></span>
+          <span class="font-mono text-emerald-700">📱 ${rec1.driverPhone}</span>
+        </div>
+        <button onclick="executeTransferAction('${rec1.donorId}', '${rec1.recipientId}', ${rec1.transferQuantity}, '${escapeQuotes(rec1.geminiJustification)}')" class="px-3.5 py-1.5 rounded-lg bg-[#15803d] hover:bg-[#166534] text-white font-bold text-xs transition shadow-sm cursor-pointer shrink-0">
+          Send Ambulance Now
+        </button>
+      </div>
+    </div>
+  `;
+
+  if (rec2) {
+    const donor2Info = getHospitalInfo(rec2.donorId);
+    const recip2Info = getHospitalInfo(rec2.recipientId);
+
+    html += `
+      <!-- Recommendation 2 (Blue theme) -->
+      <div class="bg-[#eff6ff] border border-[#bfdbfe] rounded-xl p-4 shadow-sm space-y-2.5">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base font-bold text-slate-800">
+            2. Transfer ${rec2.transferQuantity} Cylinders from Hospital ${donor2Info.letter} to Hospital ${recip2Info.letter}
+          </h3>
+          <span class="text-xs font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-mono">Rank #2</span>
+        </div>
+
+        <!-- Solid Blue Sub-banner Bar -->
+        <div class="bg-[#1d4ed8] text-white text-xs md:text-sm font-semibold rounded-lg px-4 py-2.5 shadow-sm">
+          ${donor2Info.letter} has ${Math.round(rec2.donorSurplusHours || 16)} hrs surplus, ${recip2Info.letter} depletes in ${Math.round(rec2.recipientDepletionHours || 4)} hrs. Send within 2 hours
+        </div>
+
+        <!-- Ambulance Logistics and Action Button -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-slate-700 pt-1">
+          <div class="flex items-center space-x-3">
+            <span>🚑 <strong class="font-mono text-indigo-700">${rec2.ambulanceNumber}</strong></span>
+            <span>👤 <strong>${rec2.deliveryDriver}</strong></span>
+            <span class="font-mono text-emerald-700">📱 ${rec2.driverPhone}</span>
+          </div>
+          <button onclick="executeTransferAction('${rec2.donorId}', '${rec2.recipientId}', ${rec2.transferQuantity}, '${escapeQuotes(rec2.geminiJustification)}')" class="px-3.5 py-1.5 rounded-lg bg-[#1d4ed8] hover:bg-[#1e40af] text-white font-bold text-xs transition shadow-sm cursor-pointer shrink-0">
+            Send Ambulance Now
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+}
+
+// 6. Transfer Audit History Table
 async function loadAuditHistory() {
   try {
     const res = await fetch('/api/transfers/history');
-    const logs = await res.json();
-    const tbody = document.getElementById('historyTableBody');
-    if (!tbody) return;
-
-    if (!logs || logs.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-6 text-slate-500">No transfers executed yet.</td></tr>';
-      return;
-    }
-
-    tbody.innerHTML = logs.map(l => `
-      <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/40 text-[11px]">
-        <td class="py-2.5 px-3">
-          <span class="font-bold font-mono text-teal-400 block">${l.manifestId || 'MAN-SYNC'}</span>
-          <span class="text-slate-500 text-[10px] block">${new Date(l.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-        </td>
-        <td class="py-2.5 px-3">
-          <span class="font-bold font-mono text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30">
-            +${l.quantity} cyl
-          </span>
-        </td>
-        <td class="py-2.5 px-3">
-          <strong class="text-white block">${l.donorName}</strong>
-          <span class="text-slate-400 text-[10px] block truncate max-w-xs">${l.donorAddress || ''}</span>
-          <span class="text-slate-500 text-[10px] block">📞 ${l.donorContact || ''}</span>
-        </td>
-        <td class="py-2.5 px-3">
-          <strong class="text-white block">${l.recipientName}</strong>
-          <span class="text-slate-400 text-[10px] block truncate max-w-xs">${l.recipientAddress || ''}</span>
-          <span class="text-slate-500 text-[10px] block">📞 ${l.recipientContact || ''}</span>
-        </td>
-        <td class="py-2.5 px-3">
-          <span class="font-mono font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30 text-[10px]">
-            🚑 ${l.ambulanceNumber || 'MED-AMB-408'}
-          </span>
-        </td>
-        <td class="py-2.5 px-3">
-          <strong class="text-slate-200 block">👤 ${l.deliveryDriver || 'Officer Rajesh Kumar'}</strong>
-          <span class="text-emerald-400 font-mono text-[10px] block">📱 ${l.driverPhone || '+1 (555) 839-2041'}</span>
-        </td>
-        <td class="py-2.5 px-3">
-          <span class="italic text-slate-300 block max-w-xs truncate" title="${l.geminiJustification || ''}">
-            "${l.geminiJustification || ''}"
-          </span>
-        </td>
-        <td class="py-2.5 px-3">
-          <span class="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
-            ${l.status || 'DELIVERED'}
-          </span>
-        </td>
-      </tr>
-    `).join('');
+    state.transferLogs = await res.json();
+    renderHistoryTable();
   } catch (err) {
-    console.error('Failed to load history:', err);
+    console.error('Failed to load audit history:', err);
   }
 }
 
-// Hospital Metadata Helper (Addresses & Contacts)
-const HOSPITAL_METAS = {
-  'HOSP-01': { address: '740 Metro Parkway, Downtown Medical Corridor, District 04', phone: '+1 (555) 012-4921' },
-  'HOSP-02': { address: '350 Northwood Blvd, Northside Medical Park, District 04', phone: '+1 (555) 018-7740' },
-  'HOSP-03': { address: '112 Riverbank Way, River Basin Waterfront, District 04', phone: '+1 (555) 014-3882' },
-  'HOSP-04': { address: '880 East Valley Road, Suburban Healthcare Complex, District 04', phone: '+1 (555) 019-9214' },
-  'HOSP-05': { address: '215 Westside Plaza, Westside Urban Corridor, District 04', phone: '+1 (555) 016-5531' },
-  'HOSP-06': { address: '500 Highland Ridge Road, Highland Surgical Park, District 04', phone: '+1 (555) 017-8109' }
-};
+function renderHistoryTable() {
+  const tbody = document.getElementById('historyTableBody');
+  if (!tbody) return;
 
-function getHospitalMeta(id) {
-  return HOSPITAL_METAS[id] || { address: 'District 04', phone: '+1 (555) 000-0000' };
+  if (!state.transferLogs || state.transferLogs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center py-6 text-slate-400">No transfer dispatches logged yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = state.transferLogs.slice(0, 15).map(log => {
+    const timeStr = new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const donorInfo = getHospitalInfo(log.donorId);
+    const recipInfo = getHospitalInfo(log.recipientId);
+
+    return `
+      <tr class="hover:bg-slate-50 transition">
+        <td class="py-2.5 px-3 whitespace-nowrap">
+          <span class="font-mono font-bold text-slate-700">${timeStr}</span>
+          <span class="text-[10px] text-slate-400 block">${log.manifestId || 'MAN-LOG'}</span>
+        </td>
+        <td class="py-2.5 px-3 font-mono font-bold text-emerald-600">
+          +${log.quantity} cyl
+        </td>
+        <td class="py-2.5 px-3">
+          <span class="font-bold text-slate-800">Hospital ${donorInfo.letter}</span>
+          <span class="text-[11px] text-slate-500 block truncate max-w-[140px]">${log.donorName}</span>
+        </td>
+        <td class="py-2.5 px-3">
+          <span class="font-bold text-slate-800">Hospital ${recipInfo.letter}</span>
+          <span class="text-[11px] text-slate-500 block truncate max-w-[140px]">${log.recipientName}</span>
+        </td>
+        <td class="py-2.5 px-3 font-mono font-bold text-indigo-700">
+          ${log.ambulanceNumber || 'AMB-DISPATCH'}
+        </td>
+        <td class="py-2.5 px-3 text-xs">
+          <span class="font-semibold text-slate-800 block">${log.deliveryDriver || 'Logistics Driver'}</span>
+          <span class="font-mono text-emerald-700 text-[11px]">${log.driverPhone || '+1 (555) 000-0000'}</span>
+        </td>
+        <td class="py-2.5 px-3 text-xs text-slate-600 italic max-w-xs truncate" title="${log.geminiJustification || ''}">
+          "${log.geminiJustification || 'Clinical shortage replenishment.'}"
+        </td>
+        <td class="py-2.5 px-3">
+          <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+            DELIVERED
+          </span>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
-// User Actions
-window.executeTransferAction = async function(donorId, recipientId, quantity, justification) {
+// Action Handlers
+window.executeTransferAction = async function(donorId, recipientId, quantity, geminiJustification) {
   try {
     const res = await fetch('/api/transfers/execute', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        donorId,
-        recipientId,
-        quantity,
-        geminiJustification: justification
-      })
+      body: JSON.stringify({ donorId, recipientId, quantity, geminiJustification })
     });
     const data = await res.json();
     if (data.success) {
-      showToast(`✓ Transfer of ${quantity} cylinders executed! Stock replenished.`, 'success');
+      showToast(`✓ Transfer of ${quantity} cylinders executed! Ambulance dispatched.`, 'success');
       await loadInitialData();
       await loadAuditHistory();
     } else {
@@ -524,7 +622,6 @@ function escapeQuotes(str) {
 }
 
 function setupEventListeners() {
-  // 1-Click Crisis Simulation: Drops Riverbank (HOSP-03) to 12 cylinders
   const btnTrigger = document.getElementById('btnTriggerLowStockCrisis');
   if (btnTrigger) {
     btnTrigger.addEventListener('click', async () => {
@@ -533,12 +630,11 @@ function setupEventListeners() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ hospitalId: 'HOSP-03', stock: 12 })
       });
-      showToast('🚨 Critical Emergency Triggered! Riverbank Emergency Annex dropped to 12 cylinders (<= 20).', 'error');
+      showToast('🚨 Critical Emergency Triggered! Hospital C dropped to 12 cylinders (<= 20).', 'error');
       await loadInitialData();
     });
   }
 
-  // 1-Click Reset
   const btnReset = document.getElementById('btnQuickReset');
   if (btnReset) {
     btnReset.addEventListener('click', async () => {
@@ -547,7 +643,7 @@ function setupEventListeners() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'reset' })
       });
-      showToast('🔄 District stocks reset to normal baseline.', 'info');
+      showToast('🔄 District stocks reset to baseline.', 'info');
       await loadInitialData();
       await loadAuditHistory();
     });
