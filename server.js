@@ -12,6 +12,7 @@ const { predictDistrictShortages } = require('./src/ml/predictor');
 const { validateDistrictModels, validateHospitalPredictor } = require('./src/ml/validator');
 const { generateRebalancePlan } = require('./src/optimizer/rebalance');
 const { enrichRecommendationsWithGemini, getAiClient } = require('./src/ai/gemini');
+const { generateCsv, generatePdf } = require('./src/export/export');
 
 const app = express();
 const server = http.createServer(app);
@@ -195,6 +196,37 @@ app.get('/api/transfers/history', async (req, res) => {
       .limit(50)
       .toArray();
     res.json(logs);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Export Transfer History as CSV
+app.get('/api/transfers/export/csv', async (req, res) => {
+  try {
+    const db = getDb();
+    const logs = await db.collection('transfer_logs')
+      .find()
+      .sort({ timestamp: -1 })
+      .toArray();
+    const csvContent = generateCsv(logs);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="oxygen_transfer_manifest_history.csv"');
+    res.send(csvContent);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Export Transfer History as PDF Report
+app.get('/api/transfers/export/pdf', async (req, res) => {
+  try {
+    const db = getDb();
+    const logs = await db.collection('transfer_logs')
+      .find()
+      .sort({ timestamp: -1 })
+      .toArray();
+    generatePdf(logs, res);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

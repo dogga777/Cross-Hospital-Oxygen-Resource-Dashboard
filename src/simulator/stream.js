@@ -105,20 +105,37 @@ class HospitalStreamSimulator {
       { $set: { currentStock: newRecipientStock } }
     );
 
-    // Record transfer log
+    // Get transit and dispatch logistics info
+    const { getRandomDispatchDetails, getTransitInfo } = require('../db/seed');
+    const dispatch = getRandomDispatchDetails();
+    const transit = getTransitInfo(donorId, recipientId);
+
+    // Record complete transfer manifest
     const transferDoc = {
+      manifestId: `MAN-${Date.now().toString().slice(-6)}`,
       donorId,
       donorName: donor.name,
+      donorAddress: donor.location?.address || 'District Facility',
+      donorContact: donor.location?.phone || '+1 (555) 000-0000',
       recipientId,
       recipientName: recipient.name,
+      recipientAddress: recipient.location?.address || 'District Facility',
+      recipientContact: recipient.location?.phone || '+1 (555) 000-0000',
       quantity: actualQty,
+      resourceType: 'Oxygen Cylinders (Type-D 40L)',
+      ambulanceNumber: dispatch.ambulanceNumber,
+      deliveryDriver: dispatch.deliveryDriver,
+      driverPhone: dispatch.driverPhone,
+      driverBadge: dispatch.driverBadge,
+      transitDistanceKm: transit.distanceKm,
+      transitMinutes: transit.transitMinutes,
       geminiJustification,
       timestamp: Date.now(),
-      status: 'EXECUTED'
+      status: 'DELIVERED'
     };
 
     await db.collection('transfer_logs').insertOne(transferDoc);
-    console.log(`[Simulator] ✓ Rebalance transfer executed: ${actualQty} cylinders from ${donor.name} -> ${recipient.name}`);
+    console.log(`[Simulator] ✓ Rebalance transfer executed: ${actualQty} cylinders from ${donor.name} -> ${recipient.name} (Vehicle: ${dispatch.ambulanceNumber}, Driver: ${dispatch.deliveryDriver})`);
 
     // Trigger immediate step so clients see the rebalance right away
     await this.step();

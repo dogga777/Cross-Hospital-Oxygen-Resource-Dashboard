@@ -124,12 +124,22 @@ async function runLiveTests() {
     assert(execRes.body.success === true, 'Transfer execution succeeded');
     assert(execRes.body.transfer.quantity === 25, 'Transferred exactly 25 units');
 
-    // 8. Transfer Audit History
-    console.log('\n[Suite 8] Transfer Audit Log Verification');
+    // 8. Transfer Audit History & Export Verification
+    console.log('\n[Suite 8] Transfer Audit Log, Manifests & Export Verification');
     const histRes = await fetchJson('/api/transfers/history');
     assert(histRes.status === 200, 'GET /api/transfers/history returns HTTP 200');
     assert(histRes.body.length > 0, `Found ${histRes.body.length} transfer records in MongoDB`);
-    assert(histRes.body[0].status === 'EXECUTED', 'Recent transfer confirmed EXECUTED');
+    const sampleLog = histRes.body[0];
+    assert(!!sampleLog.ambulanceNumber, `Ambulance vehicle logged: ${sampleLog.ambulanceNumber}`);
+    assert(!!sampleLog.deliveryDriver, `Delivery personnel logged: ${sampleLog.deliveryDriver}`);
+    assert(!!sampleLog.driverPhone, `Driver contact phone logged: ${sampleLog.driverPhone}`);
+    assert(!!sampleLog.donorAddress && !!sampleLog.recipientAddress, 'Hospital locations/addresses logged');
+
+    // 8b. CSV & PDF Export checks
+    const csvRes = await fetchRaw('/api/transfers/export/csv');
+    assert(csvRes.status === 200 && csvRes.length > 100, 'GET /api/transfers/export/csv returns valid CSV download');
+    const pdfRes = await fetchRaw('/api/transfers/export/pdf');
+    assert(pdfRes.status === 200 && pdfRes.length > 500, 'GET /api/transfers/export/pdf returns valid PDF document');
 
     // 9. Surge Event Injection
     console.log('\n[Suite 9] Emergency Influx Surge Event');

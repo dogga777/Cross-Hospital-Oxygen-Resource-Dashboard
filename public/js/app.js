@@ -666,18 +666,70 @@ async function loadAuditHistory() {
     if (!tbody) return;
 
     if (logs.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500 font-sans">No transfer executions recorded yet.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center py-8 text-slate-500 font-sans">No transfer manifests recorded yet. Click "Approve & Dispatch Transfer" to create one.</td></tr>';
       return;
     }
 
     tbody.innerHTML = logs.map(l => `
-      <tr class="hover:bg-slate-800/40 transition">
-        <td class="py-2.5 px-3 text-slate-400">${new Date(l.timestamp).toLocaleTimeString()}</td>
-        <td class="py-2.5 px-3 text-emerald-400 font-semibold">${l.donorName}</td>
-        <td class="py-2.5 px-3 text-rose-400 font-semibold">${l.recipientName}</td>
-        <td class="py-2.5 px-3 text-cyan-300 font-bold">+${l.quantity} cyl</td>
-        <td class="py-2.5 px-3 text-slate-300 italic max-w-xs truncate">${l.geminiJustification || 'Manual Dispatch'}</td>
-        <td class="py-2.5 px-3"><span class="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">${l.status}</span></td>
+      <tr class="hover:bg-slate-800/40 transition border-b border-slate-800/40 text-[11px]">
+        <!-- Manifest & Time -->
+        <td class="py-3 px-3">
+          <span class="font-bold font-mono text-teal-400 block">${l.manifestId || 'MAN-SYNC'}</span>
+          <span class="text-slate-400 text-[10px] block mt-0.5">${new Date(l.timestamp).toLocaleString()}</span>
+        </td>
+
+        <!-- Quantity -->
+        <td class="py-3 px-3">
+          <span class="font-bold font-mono text-cyan-300 bg-cyan-950/80 px-2 py-0.5 rounded border border-cyan-500/30 inline-block">
+            +${l.quantity} cyl
+          </span>
+        </td>
+
+        <!-- Source Hospital & Location -->
+        <td class="py-3 px-3">
+          <strong class="text-white block">${l.donorName}</strong>
+          <span class="text-slate-400 text-[10px] block truncate max-w-xs" title="${l.donorAddress || 'District Facility'}">
+            📍 ${l.donorAddress || 'District Northside Facility'}
+          </span>
+          <span class="text-slate-500 text-[10px] block">📞 ${l.donorContact || '+1 (555) 018-7740'}</span>
+        </td>
+
+        <!-- Destination Hospital & Location -->
+        <td class="py-3 px-3">
+          <strong class="text-white block">${l.recipientName}</strong>
+          <span class="text-slate-400 text-[10px] block truncate max-w-xs" title="${l.recipientAddress || 'District Facility'}">
+            📍 ${l.recipientAddress || 'District Southside Facility'}
+          </span>
+          <span class="text-slate-500 text-[10px] block">📞 ${l.recipientContact || '+1 (555) 012-4921'}</span>
+        </td>
+
+        <!-- Ambulance / Vehicle Plate -->
+        <td class="py-3 px-3">
+          <span class="font-mono font-bold text-amber-300 bg-amber-950/60 px-2 py-0.5 rounded border border-amber-500/30 text-[10px] inline-block">
+            🚑 ${l.ambulanceNumber || 'MED-AMB-408'}
+          </span>
+          <span class="text-slate-500 text-[10px] block mt-0.5">${l.transitMinutes || 15}m transit</span>
+        </td>
+
+        <!-- Delivery Personnel & Contact -->
+        <td class="py-3 px-3">
+          <strong class="text-slate-200 block">👤 ${l.deliveryDriver || 'Officer Rajesh Kumar'}</strong>
+          <span class="text-emerald-400 text-[10px] font-mono block mt-0.5">📱 ${l.driverPhone || '+1 (555) 839-2041'}</span>
+        </td>
+
+        <!-- Gemini Clinical Justification -->
+        <td class="py-3 px-3">
+          <span class="italic text-slate-300 block max-w-xs line-clamp-2" title="${l.geminiJustification || ''}">
+            "${l.geminiJustification || 'Clinical cross-hospital rebalance'}"
+          </span>
+        </td>
+
+        <!-- Status -->
+        <td class="py-3 px-3">
+          <span class="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-400 text-[10px] font-bold border border-emerald-500/30">
+            ${l.status || 'DELIVERED'}
+          </span>
+        </td>
       </tr>
     `).join('');
   } catch (err) {
