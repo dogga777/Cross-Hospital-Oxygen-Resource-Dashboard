@@ -143,6 +143,7 @@ class HospitalStreamSimulator {
     }
     const { seedDatabaseIfEmpty } = require('../db/seed');
     await seedDatabaseIfEmpty();
+    this.simulatedTime = Date.now();
     this.surgeMultipliers.clear();
     console.log('[Simulator] Reset all hospital stocks and re-seeded fresh telemetry.');
     await this.step();
@@ -154,12 +155,16 @@ class HospitalStreamSimulator {
     const hospitals = await db.collection('hospitals').find().toArray();
     if (!hospitals || hospitals.length === 0) return;
 
-    const now = Date.now();
-    const telemetryBatch = [];
-    const updatedHospitals = [];
+    if (!this.simulatedTime) {
+      this.simulatedTime = Date.now();
+    }
+    // Each tick advances simulation by 3 operational minutes (0.05 hours)
+    const simulatedHoursElapsed = 0.05;
+    this.simulatedTime += Math.round(simulatedHoursElapsed * 3600 * 1000);
+    const now = this.simulatedTime;
 
-    // Each tick simulates ~1.5 minutes of operational burn
-    const simulatedHoursElapsed = 0.025; 
+    const telemetryBatch = [];
+    const updatedHospitals = []; 
 
     for (const hosp of hospitals) {
       const surge = this.surgeMultipliers.get(hosp.id) || 1.0;
