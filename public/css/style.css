@@ -1,34 +1,44 @@
-/* Custom animations and styling for Cross-Hospital Rebalance Dashboard */
+/* Clean, modern operations center styling */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
-@keyframes pulseGlow {
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  letter-spacing: -0.01em;
+}
+
+/* Pulse animation for critical shortages */
+@keyframes criticalGlow {
   0%, 100% {
-    box-shadow: 0 0 15px rgba(244, 63, 94, 0.4);
+    border-color: rgba(244, 63, 94, 0.4);
+    box-shadow: 0 0 15px rgba(244, 63, 94, 0.15);
   }
   50% {
-    box-shadow: 0 0 25px rgba(244, 63, 94, 0.8);
+    border-color: rgba(244, 63, 94, 0.8);
+    box-shadow: 0 0 25px rgba(244, 63, 94, 0.35);
   }
 }
 
 .critical-pulse {
-  animation: pulseGlow 2s infinite ease-in-out;
+  animation: criticalGlow 2.5s infinite ease-in-out;
 }
 
+/* Gemini AI subtle glow */
 @keyframes geminiGlow {
   0%, 100% {
-    border-color: rgba(147, 51, 234, 0.4);
-    box-shadow: 0 0 15px rgba(147, 51, 234, 0.15);
+    border-color: rgba(168, 85, 247, 0.3);
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.1);
   }
   50% {
-    border-color: rgba(236, 72, 153, 0.6);
-    box-shadow: 0 0 22px rgba(236, 72, 153, 0.25);
+    border-color: rgba(236, 72, 153, 0.5);
+    box-shadow: 0 0 20px rgba(236, 72, 153, 0.2);
   }
 }
 
 .gemini-box {
-  animation: geminiGlow 3s infinite ease-in-out;
+  animation: geminiGlow 3.5s infinite ease-in-out;
 }
 
-/* Custom scrollbars */
+/* Custom sleek scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -40,10 +50,10 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(51, 65, 85, 0.8);
+  background: rgba(51, 65, 85, 0.7);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(71, 85, 105, 1);
+  background: rgba(71, 85, 105, 0.9);
 }

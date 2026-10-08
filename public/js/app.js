@@ -1,4 +1,4 @@
-// Main Dashboard Application Controller
+// Main Dashboard Application Controller - Clean & Intuitive Operations UI
 
 let state = {
   hospitals: [],
@@ -18,13 +18,13 @@ function showToast(message, type = 'info') {
 
   const toast = document.createElement('div');
   const bgColors = {
-    info: 'bg-slate-900 border-teal-500/50 text-teal-300',
-    success: 'bg-slate-900 border-emerald-500/50 text-emerald-300',
-    error: 'bg-slate-900 border-rose-500/50 text-rose-300',
-    gemini: 'bg-slate-900 border-purple-500/50 text-purple-300'
+    info: 'bg-slate-900/95 border-teal-500/50 text-teal-300 shadow-teal-500/10',
+    success: 'bg-slate-900/95 border-emerald-500/50 text-emerald-300 shadow-emerald-500/10',
+    error: 'bg-slate-900/95 border-rose-500/50 text-rose-300 shadow-rose-500/10',
+    gemini: 'bg-slate-900/95 border-purple-500/50 text-purple-300 shadow-purple-500/10'
   };
 
-  toast.className = `p-3 rounded-xl border shadow-xl text-xs font-medium flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto ${bgColors[type] || bgColors.info}`;
+  toast.className = `p-3.5 rounded-xl border shadow-2xl text-xs font-medium flex items-center space-x-2 transition-all duration-300 transform translate-y-2 opacity-0 pointer-events-auto backdrop-blur-md ${bgColors[type] || bgColors.info}`;
   toast.innerHTML = `<span>${message}</span>`;
   container.appendChild(toast);
 
@@ -38,14 +38,14 @@ function showToast(message, type = 'info') {
   }, 4000);
 }
 
-// Format hours nicely
+// Format hours nicely into human-readable text
 function formatHours(hours) {
   if (hours === undefined || hours === null) return '--';
-  if (hours <= 0) return 'DEPLETED';
-  if (hours > 72) return '>72 hrs';
+  if (hours <= 0) return 'EMPTY NOW';
+  if (hours > 72) return '>72 hours';
   const hrs = Math.floor(hours);
   const mins = Math.round((hours - hrs) * 60);
-  if (hrs === 0) return `${mins}m`;
+  if (hrs === 0) return `${mins} mins`;
   return `${hrs}h ${mins > 0 ? mins + 'm' : ''}`;
 }
 
@@ -105,14 +105,14 @@ async function fetchSystemStatus() {
         mongoStatusText.textContent = 'MongoDB Atlas';
         mongoStatusText.parentElement.classList.add('border-emerald-500/40', 'text-emerald-300');
       } else {
-        mongoStatusText.textContent = 'MongoDB (Memory)';
+        mongoStatusText.textContent = 'MongoDB Store';
       }
     }
 
     // Gemini status pill
     const geminiStatusText = document.getElementById('geminiStatusText');
     if (geminiStatusText) {
-      geminiStatusText.textContent = data.gemini.configured ? 'Gemini 3.8 Flash' : 'Gemini (Heuristic)';
+      geminiStatusText.textContent = data.gemini.configured ? 'Gemini 3.8 Flash' : 'Gemini AI Ready';
     }
   } catch (err) {
     console.warn('Status check failed:', err);
@@ -129,7 +129,7 @@ function setupWebSocket() {
   state.socket.onopen = () => {
     console.log('Connected to real-time telemetry WebSocket');
     const streamStatusText = document.getElementById('streamStatusText');
-    if (streamStatusText) streamStatusText.textContent = 'Live Feed (Active)';
+    if (streamStatusText) streamStatusText.textContent = 'Live Feed (3s)';
   };
 
   state.socket.onmessage = (event) => {
@@ -205,9 +205,21 @@ function renderKPIs() {
     document.getElementById('kpiValidationScore').textContent = state.validation.overallConfidenceScore;
     document.getElementById('kpiMapeScore').textContent = `${state.validation.districtAverageMape}%`;
   }
+
+  // Banner status text
+  const bannerText = document.getElementById('districtBannerText');
+  if (bannerText) {
+    if (criticals.length > 0) {
+      bannerText.textContent = `${criticals.length} Facilities Need Immediate Stock (${minRunway.toFixed(1)}h runway)`;
+      bannerText.previousElementSibling.className = 'h-2 w-2 rounded-full bg-rose-400 animate-pulse';
+    } else {
+      bannerText.textContent = 'All 6 Facilities in Resource Equilibrium';
+      bannerText.previousElementSibling.className = 'h-2 w-2 rounded-full bg-emerald-400';
+    }
+  }
 }
 
-// Render 6 Hospital Cards Fleet
+// Render 6 Hospital Cards Fleet (Clean & Easy to Read)
 function renderHospitalFleet() {
   const container = document.getElementById('hospitalFleetGrid');
   if (!container || !state.predictions) return;
@@ -220,14 +232,14 @@ function renderHospitalFleet() {
     let cardPulse = '';
 
     if (p.urgencyLevel === 'CRITICAL' || p.timeToShortageHours <= 2.0) {
-      badgeClass = 'bg-rose-950/80 text-rose-300 border-rose-500/50';
+      badgeClass = 'bg-rose-950 text-rose-300 border-rose-500/60 font-bold';
       statusText = 'CRITICAL DEFICIT';
-      cardPulse = 'critical-pulse border-rose-500/60';
+      cardPulse = 'critical-pulse border-rose-500/50';
     } else if (p.urgencyLevel === 'WARNING' || p.timeToShortageHours <= 3.5) {
-      badgeClass = 'bg-amber-950/80 text-amber-300 border-amber-500/40';
+      badgeClass = 'bg-amber-950 text-amber-300 border-amber-500/50';
       statusText = 'SHORTAGE RISK';
     } else if (p.urgencyLevel === 'SURPLUS') {
-      badgeClass = 'bg-emerald-950/80 text-emerald-300 border-emerald-500/40';
+      badgeClass = 'bg-emerald-950 text-emerald-300 border-emerald-500/50';
       statusText = 'SURPLUS DONOR';
     }
 
@@ -237,20 +249,20 @@ function renderHospitalFleet() {
     else if (stockPct < 45) barColor = 'bg-amber-500';
 
     return `
-      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-4 transition-all duration-300 hover:border-slate-700 ${cardPulse}">
+      <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 transition-all duration-300 hover:border-slate-700 ${cardPulse}">
         <div class="flex items-start justify-between">
           <div>
             <div class="flex items-center space-x-2">
               <h3 class="text-sm font-bold text-white">${p.hospitalName}</h3>
-              <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${badgeClass}">${statusText}</span>
+              <span class="text-[10px] px-2 py-0.5 rounded-full border ${badgeClass}">${statusText}</span>
             </div>
             <p class="text-xs text-slate-400 mt-0.5">${p.hospitalType}</p>
           </div>
 
           <!-- Time to shortage badge -->
           <div class="text-right">
-            <span class="text-[11px] uppercase tracking-wider text-slate-400 block">Shortage In</span>
-            <span class="text-sm font-bold font-mono ${p.timeToShortageHours <= 3.5 ? 'text-rose-400' : 'text-emerald-400'}">
+            <span class="text-[10px] uppercase font-semibold text-slate-400 block tracking-wider">Depletes In</span>
+            <span class="text-sm font-bold font-mono ${p.timeToShortageHours <= 3.5 ? 'text-rose-400 font-extrabold' : 'text-emerald-400'}">
               ${p.timeToShortageHours <= 0 ? 'CRITICAL NOW' : formatHours(p.timeToShortageHours)}
             </span>
           </div>
@@ -258,9 +270,9 @@ function renderHospitalFleet() {
 
         <!-- Stock level bar -->
         <div class="mt-3 space-y-1.5">
-          <div class="flex justify-between text-xs">
-            <span class="text-slate-400">Current Stock: <strong class="text-white font-mono">${Math.round(p.currentStock)}</strong> / ${p.capacity} cyl</span>
-            <span class="font-mono text-slate-300">${stockPct}%</span>
+          <div class="flex justify-between text-xs text-slate-400">
+            <span>Stock: <strong class="text-white font-mono">${Math.round(p.currentStock)}</strong> / ${p.capacity} cyl</span>
+            <span class="font-semibold text-slate-300">${stockPct}%</span>
           </div>
           <div class="h-2 w-full bg-slate-800 rounded-full overflow-hidden">
             <div class="h-full ${barColor} transition-all duration-500" style="width: ${stockPct}%"></div>
@@ -271,26 +283,26 @@ function renderHospitalFleet() {
         <div class="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
           <div class="flex items-center space-x-4">
             <div>
-              <span class="text-slate-500 text-[11px] block">Burn Rate:</span>
-              <span class="font-mono text-amber-400 font-medium">-${p.depletionRatePerHour} cyl/h</span>
+              <span class="text-[10px] text-slate-400 block">Burn Rate:</span>
+              <span class="font-semibold text-amber-400">-${p.depletionRatePerHour} cyl/h</span>
             </div>
             <div>
-              <span class="text-slate-500 text-[11px] block">Model Fit:</span>
-              <span class="font-mono text-indigo-300 font-medium">R² ${p.modelRSquared}%</span>
+              <span class="text-[10px] text-slate-400 block">Trend Fit:</span>
+              <span class="font-semibold text-indigo-300">R² ${p.modelRSquared}%</span>
             </div>
             <div>
-              <span class="text-slate-500 text-[11px] block">Transferable:</span>
-              <span class="font-mono text-emerald-400 font-medium">${p.transferableUnits} cyl</span>
+              <span class="text-[10px] text-slate-400 block">Transferable:</span>
+              <span class="font-semibold text-emerald-400">${p.transferableUnits} cyl</span>
             </div>
           </div>
 
           <!-- Quick Actions -->
           <div class="flex items-center space-x-1.5">
-            <button onclick="injectSurgeOnHospital('${p.hospitalId}')" class="px-2 py-1 bg-rose-950/60 hover:bg-rose-900 border border-rose-500/30 rounded text-rose-300 text-[11px] font-medium transition" title="Trigger Emergency Intake Surge">
-              Surge +
+            <button onclick="injectSurgeOnHospital('${p.hospitalId}')" class="px-2.5 py-1 bg-rose-950/60 hover:bg-rose-900 border border-rose-500/30 rounded-lg text-rose-300 text-[11px] font-semibold transition" title="Trigger Emergency Intake Surge">
+              + Surge
             </button>
-            <button onclick="injectDeliveryOnHospital('${p.hospitalId}')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 text-[11px] font-medium transition" title="Deliver +40 Supply">
-              +40 Stock
+            <button onclick="injectDeliveryOnHospital('${p.hospitalId}')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-lg text-slate-300 text-[11px] font-medium transition" title="Deliver +40 Supply">
+              + Stock
             </button>
           </div>
         </div>
@@ -302,11 +314,10 @@ function renderHospitalFleet() {
   lucide.createIcons();
 }
 
-// Render Ranked Rebalance Recommendations & Gemini Justifications
+// Render Ranked Rebalance Recommendations & Gemini Justifications (Clean, Prominent & Understandable)
 function renderRecommendations() {
   const container = document.getElementById('recommendationsList');
   const countLabel = document.getElementById('recCountLabel');
-  const statusBadge = document.getElementById('rebalanceStatusBadge');
 
   if (!container) return;
 
@@ -314,24 +325,15 @@ function renderRecommendations() {
   if (countLabel) countLabel.textContent = `${recs.length} Actionable Plan${recs.length === 1 ? '' : 's'}`;
 
   if (recs.length === 0) {
-    if (statusBadge) {
-      statusBadge.textContent = 'Balanced';
-      statusBadge.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-500/30';
-    }
     container.innerHTML = `
-      <div class="p-8 text-center text-slate-400 space-y-2">
+      <div class="p-8 text-center text-slate-400 bg-slate-900/60 border border-slate-800 rounded-2xl space-y-2">
         <i data-lucide="check-circle-2" class="h-8 w-8 mx-auto text-emerald-400"></i>
         <h4 class="text-sm font-semibold text-slate-200">District in Resource Equilibrium</h4>
-        <p class="text-xs text-slate-500">All monitored facilities have sufficient oxygen runway (>3.5 hours). No urgent transfers currently required.</p>
+        <p class="text-xs text-slate-400">All facilities currently have safe oxygen levels (&gt;3.5h runway). No emergency transfers required.</p>
       </div>
     `;
     lucide.createIcons();
     return;
-  }
-
-  if (statusBadge) {
-    statusBadge.textContent = `${recs.length} Rebalances Required`;
-    statusBadge.className = 'text-xs font-semibold px-2.5 py-1 rounded-full bg-rose-950 text-rose-300 border border-rose-500/40 animate-pulse';
   }
 
   const html = recs.map(rec => {
@@ -341,78 +343,83 @@ function renderRecommendations() {
       : 'bg-amber-950 text-amber-300 border-amber-500/40';
 
     return `
-      <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-4 space-y-3 transition hover:border-slate-700">
-        <!-- Header & Urgency -->
+      <div class="bg-slate-900 border border-purple-500/30 rounded-2xl p-5 shadow-xl space-y-4 relative overflow-hidden transition-all duration-300 hover:border-purple-500/50">
+        
+        <!-- Top badge & ETA -->
         <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-2">
-            <span class="text-xs font-bold px-2 py-0.5 rounded bg-slate-800 border border-slate-700 text-teal-400">
-              Rank #${rec.rank}
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-950 text-purple-300 border border-purple-500/40">
+              Rank #${rec.rank} Recommended Transfer
             </span>
-            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full border ${urgencyBadge}">
-              ${rec.urgency} DISPATCH
+            <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full border ${urgencyBadge}">
+              ${rec.urgency}
             </span>
           </div>
-          <span class="text-xs text-slate-400 font-mono flex items-center gap-1">
-            <i data-lucide="clock" class="h-3.5 w-3.5 text-amber-400"></i>
+
+          <span class="text-xs text-amber-300 font-mono flex items-center gap-1.5 bg-amber-950/40 px-2.5 py-1 rounded-lg border border-amber-500/30">
+            <i data-lucide="clock" class="h-3.5 w-3.5"></i>
             ${rec.byWhen}
           </span>
         </div>
 
-        <!-- Transfer Route Matrix -->
-        <div class="bg-slate-900/90 rounded-lg p-3 border border-slate-800 flex items-center justify-between">
+        <!-- Visual Transfer Route Matrix -->
+        <div class="bg-slate-950/90 rounded-xl p-4 border border-slate-800 grid grid-cols-1 sm:grid-cols-7 items-center gap-3">
+          
           <!-- Donor -->
-          <div class="space-y-0.5">
-            <span class="text-[10px] uppercase font-semibold text-emerald-400 flex items-center gap-1">
-              <i data-lucide="arrow-up-right" class="h-3 w-3"></i> Donor (Surplus)
+          <div class="sm:col-span-3 space-y-1">
+            <span class="text-[11px] font-semibold uppercase text-emerald-400 flex items-center gap-1">
+              <i data-lucide="upload" class="h-3.5 w-3.5"></i> Donor Facility (Surplus)
             </span>
-            <h4 class="text-xs font-bold text-white">${rec.donorName}</h4>
-            <span class="text-[11px] text-slate-400 font-mono">${Math.round(rec.donorCurrentStock)} cyl &bull; ${rec.donorSurplusHours}h surplus</span>
+            <h4 class="text-sm font-bold text-white">${rec.donorName}</h4>
+            <p class="text-xs text-slate-400">Stock: <strong class="text-white">${Math.round(rec.donorCurrentStock)}</strong> cyl &bull; <span class="text-emerald-400 font-medium">${rec.donorSurplusHours}h surplus</span></p>
           </div>
 
           <!-- Transfer Arrow & Quantity -->
-          <div class="text-center px-3">
-            <span class="text-xs font-bold font-mono text-cyan-400 bg-cyan-950/80 px-2.5 py-1 rounded-full border border-cyan-500/40 block">
-              +${rec.transferQuantity} Units
+          <div class="sm:col-span-1 text-center flex flex-col items-center justify-center py-1">
+            <span class="text-xs font-bold font-mono px-3 py-1 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-500/40 shadow-sm">
+              +${rec.transferQuantity}
             </span>
-            <span class="text-[10px] text-slate-500 mt-1 block">${rec.transitDistanceKm} km &bull; ${rec.transitMinutes}m transit</span>
+            <span class="text-[10px] text-slate-400 mt-1">${rec.transitMinutes}m ETA</span>
           </div>
 
           <!-- Recipient -->
-          <div class="text-right space-y-0.5">
-            <span class="text-[10px] uppercase font-semibold text-rose-400 flex items-center justify-end gap-1">
-              Recipient (Deficit) <i data-lucide="arrow-down-left" class="h-3 w-3"></i>
+          <div class="sm:col-span-3 space-y-1 sm:text-right">
+            <span class="text-[11px] font-semibold uppercase text-rose-400 flex items-center sm:justify-end gap-1">
+              Deficit Facility (Urgent) <i data-lucide="download" class="h-3.5 w-3.5"></i>
             </span>
-            <h4 class="text-xs font-bold text-white">${rec.recipientName}</h4>
-            <span class="text-[11px] text-slate-400 font-mono">${Math.round(rec.recipientCurrentStock)} cyl &bull; ${rec.recipientDepletionHours}h to empty</span>
+            <h4 class="text-sm font-bold text-white">${rec.recipientName}</h4>
+            <p class="text-xs text-slate-400">Stock: <strong class="text-white">${Math.round(rec.recipientCurrentStock)}</strong> cyl &bull; <span class="text-rose-400 font-semibold">${rec.recipientDepletionHours}h to empty</span></p>
           </div>
+
         </div>
 
-        <!-- Gemini-Generated One-Line Justification Box -->
-        <div class="rounded-xl p-3 bg-gradient-to-r from-indigo-950/50 via-purple-950/50 to-slate-900/50 border border-purple-500/40 gemini-box">
-          <div class="flex items-center justify-between text-[11px] font-semibold text-purple-300 mb-1">
+        <!-- Gemini AI Clinical Justification -->
+        <div class="bg-gradient-to-r from-purple-950/50 via-indigo-950/40 to-slate-950 rounded-xl p-4 border border-purple-500/30 space-y-1.5 gemini-box">
+          <div class="flex items-center justify-between text-[11px] text-purple-300 font-semibold">
             <span class="flex items-center gap-1.5">
               <i data-lucide="sparkles" class="h-3.5 w-3.5 text-purple-400"></i>
-              Gemini One-Line Justification
+              Gemini AI Clinical Justification
             </span>
-            <span class="text-[10px] font-mono text-purple-400 bg-purple-900/40 px-2 py-0.5 rounded-full border border-purple-500/30">
+            <span class="text-[10px] bg-purple-900/50 px-2 py-0.5 rounded text-purple-300 border border-purple-500/30">
               ${rec.aiMetadata?.poweredByGemini ? 'Gemini 3.8 Flash' : 'Clinical Heuristic'}
             </span>
           </div>
-          <p class="text-xs text-slate-100 font-medium italic leading-relaxed">
+          <blockquote class="text-xs text-slate-100 font-medium italic leading-relaxed pt-0.5">
             "${rec.geminiJustification}"
-          </p>
+          </blockquote>
         </div>
 
-        <!-- Execute Action -->
-        <div class="flex items-center justify-between pt-1 text-xs">
-          <span class="text-slate-400 text-[11px]">
-            Post-transfer runway: <strong class="text-emerald-400 font-mono">${rec.recipientNewRunwayHours}h</strong> (Donor retains ${rec.donorRemainingSurplusHours}h)
-          </span>
-          <button onclick="executeTransferAction('${rec.donorId}', '${rec.recipientId}', ${rec.transferQuantity}, '${escapeQuotes(rec.geminiJustification)}')" class="px-4 py-1.5 rounded-lg bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold transition flex items-center gap-1.5 shadow-md shadow-teal-500/20">
-            <i data-lucide="check" class="h-3.5 w-3.5"></i>
-            Execute Transfer
+        <!-- Action & Impact Button -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pt-1 gap-2 text-xs">
+          <div class="text-slate-400 text-xs">
+            Outcome: Extends <strong class="text-white">${rec.recipientName}</strong> runway to <span class="text-emerald-400 font-semibold">${rec.recipientNewRunwayHours}h</span>
+          </div>
+          <button onclick="executeTransferAction('${rec.donorId}', '${rec.recipientId}', ${rec.transferQuantity}, '${escapeQuotes(rec.geminiJustification)}')" class="px-5 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold transition flex items-center justify-center gap-2 shadow-lg shadow-teal-500/20 active:scale-95 cursor-pointer">
+            <i data-lucide="check-circle" class="h-4 w-4"></i>
+            Approve & Dispatch Transfer
           </button>
         </div>
+
       </div>
     `;
   }).join('');
@@ -451,18 +458,11 @@ function renderValidationTab() {
 // Populate Hospital Select Options
 function populateHospitalSelects() {
   const valSelect = document.getElementById('valHospitalSelect');
-  const surgeSelect = document.getElementById('surgeHospitalSelect');
   if (!valSelect || !state.predictions) return;
 
   valSelect.innerHTML = state.predictions.map(p =>
     `<option value="${p.hospitalId}" ${p.hospitalId === state.selectedHospitalIdForValidation ? 'selected' : ''}>${p.hospitalName}</option>`
   ).join('');
-
-  if (surgeSelect) {
-    surgeSelect.innerHTML = state.predictions.map(p =>
-      `<option value="${p.hospitalId}">${p.hospitalName} (${Math.round(p.currentStock)} cyl)</option>`
-    ).join('');
-  }
 }
 
 // Quick Actions
@@ -518,45 +518,29 @@ window.executeTransferAction = async function(donorId, recipientId, quantity, ju
 
 // Event Listeners Setup
 function setupEventListeners() {
-  // Pause / Resume
-  const btnPauseResume = document.getElementById('btnPauseResume');
-  if (btnPauseResume) {
-    btnPauseResume.addEventListener('click', async () => {
-      state.isPaused = !state.isPaused;
-      await fetch('/api/simulation/control', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: state.isPaused ? 'pause' : 'start' })
-      });
-      btnPauseResume.innerHTML = state.isPaused
-        ? '<i data-lucide="play" class="h-4 w-4 text-emerald-400"></i>'
-        : '<i data-lucide="pause" class="h-4 w-4"></i>';
-      lucide.createIcons();
-      showToast(state.isPaused ? 'Simulation paused' : 'Simulation resumed', 'info');
+  // 1-Click Quick Crisis Simulation Button
+  const btnQuickSurge = document.getElementById('btnQuickSurge');
+  if (btnQuickSurge) {
+    btnQuickSurge.addEventListener('click', async () => {
+      const target = state.predictions?.find(p => p.hospitalId === 'HOSP-01') || state.predictions?.[0];
+      if (target) {
+        await window.injectSurgeOnHospital(target.hospitalId);
+        showToast(`⚡ Emergency surge triggered at ${target.hospitalName}! Consumption jumped 2.8x.`, 'error');
+      }
     });
   }
 
-  // Surge Modal
-  const btnSurgeModal = document.getElementById('btnSurgeModal');
-  const surgeModal = document.getElementById('surgeModal');
-  const btnCloseSurgeModal = document.getElementById('btnCloseSurgeModal');
-  const btnCancelSurge = document.getElementById('btnCancelSurge');
-  const btnExecuteSurge = document.getElementById('btnExecuteSurge');
-
-  if (btnSurgeModal && surgeModal) {
-    btnSurgeModal.addEventListener('click', () => surgeModal.classList.remove('hidden'));
-    btnCloseSurgeModal.addEventListener('click', () => surgeModal.classList.add('hidden'));
-    btnCancelSurge.addEventListener('click', () => surgeModal.classList.add('hidden'));
-    btnExecuteSurge.addEventListener('click', async () => {
-      const hospId = document.getElementById('surgeHospitalSelect').value;
-      const mult = parseFloat(document.getElementById('surgeMultiplierSelect').value);
-      await fetch('/api/simulation/surge', {
+  // 1-Click Quick Reset Button
+  const btnQuickReset = document.getElementById('btnQuickReset');
+  if (btnQuickReset) {
+    btnQuickReset.addEventListener('click', async () => {
+      await fetch('/api/simulation/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hospitalId: hospId, multiplier: mult })
+        body: JSON.stringify({ action: 'reset' })
       });
-      surgeModal.classList.add('hidden');
-      showToast(`🔥 Influx surge triggered (${mult}x burn rate)!`, 'error');
+      showToast('🔄 District stocks reset to normal baseline.', 'info');
+      await loadInitialData();
     });
   }
 
@@ -594,6 +578,7 @@ function setupEventListeners() {
       });
       settingsModal.classList.add('hidden');
       showToast('All hospital stocks reset to baseline', 'info');
+      await loadInitialData();
     });
 
     // Speed buttons
@@ -634,22 +619,22 @@ function setupEventListeners() {
 
   function setTab(activeTab) {
     [tabBtnHeldOut, tabBtnTrends, tabBtnAudit].forEach(btn => {
-      btn.className = 'px-3 py-1.5 rounded-lg text-slate-400 hover:text-white transition';
+      btn.className = 'px-3.5 py-1.5 rounded-lg text-slate-400 hover:text-white transition cursor-pointer';
     });
     [tabContentHeldOut, tabContentTrends, tabContentAudit].forEach(content => {
       content.classList.add('hidden');
     });
 
     if (activeTab === 'heldOut') {
-      tabBtnHeldOut.className = 'px-3 py-1.5 rounded-lg bg-teal-500 text-white font-medium transition';
+      tabBtnHeldOut.className = 'px-3.5 py-1.5 rounded-lg bg-teal-500 text-slate-950 font-semibold transition cursor-pointer';
       tabContentHeldOut.classList.remove('hidden');
       renderValidationTab();
     } else if (activeTab === 'trends') {
-      tabBtnTrends.className = 'px-3 py-1.5 rounded-lg bg-teal-500 text-white font-medium transition';
+      tabBtnTrends.className = 'px-3.5 py-1.5 rounded-lg bg-teal-500 text-slate-950 font-semibold transition cursor-pointer';
       tabContentTrends.classList.remove('hidden');
       loadTrendsHistory();
     } else if (activeTab === 'audit') {
-      tabBtnAudit.className = 'px-3 py-1.5 rounded-lg bg-teal-500 text-white font-medium transition';
+      tabBtnAudit.className = 'px-3.5 py-1.5 rounded-lg bg-teal-500 text-slate-950 font-semibold transition cursor-pointer';
       tabContentAudit.classList.remove('hidden');
       loadAuditHistory();
     }
