@@ -8,7 +8,15 @@ body {
   letter-spacing: -0.01em;
 }
 
-/* Pulse animation for critical shortages */
+/* Map container styling */
+#hospitalMap {
+  height: 380px;
+  width: 100%;
+  border-radius: 0.75rem;
+  z-index: 10;
+}
+
+/* Custom pulse for critical shortages */
 @keyframes criticalGlow {
   0%, 100% {
     border-color: rgba(239, 68, 68, 0.4);
@@ -42,4 +50,16 @@ body {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #64748b;
+}
+
+/* Custom Leaflet popup styling */
+.leaflet-popup-content-wrapper {
+  border-radius: 0.75rem;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+}
+.leaflet-popup-content {
+  margin: 0;
+  line-height: 1.4;
 }
