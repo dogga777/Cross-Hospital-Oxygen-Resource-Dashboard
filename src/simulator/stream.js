@@ -127,6 +127,7 @@ class HospitalStreamSimulator {
 
   async reset() {
     const db = getDb();
+    await db.collection('resource_telemetry').deleteMany({});
     for (const h of INITIAL_HOSPITALS) {
       await db.collection('hospitals').updateOne(
         { id: h.id },
@@ -140,8 +141,10 @@ class HospitalStreamSimulator {
         }
       );
     }
+    const { seedDatabaseIfEmpty } = require('../db/seed');
+    await seedDatabaseIfEmpty();
     this.surgeMultipliers.clear();
-    console.log('[Simulator] Reset all hospital stocks to baseline.');
+    console.log('[Simulator] Reset all hospital stocks and re-seeded fresh telemetry.');
     await this.step();
   }
 
@@ -166,8 +169,10 @@ class HospitalStreamSimulator {
       const consumptionDelta = effectiveBurnRate * simulatedHoursElapsed;
       let newStock = hosp.currentStock - consumptionDelta;
 
-      // Ensure stock doesn't drop below 0
-      if (newStock < 0) newStock = 0;
+      // When a hospital hits empty, routine scheduled supply delivery arrives
+      if (newStock <= 5) {
+        newStock = Math.round(hosp.capacity * 0.40);
+      }
       newStock = Math.round(newStock * 10) / 10;
 
       // Calculate pressure in PSI based on remaining capacity

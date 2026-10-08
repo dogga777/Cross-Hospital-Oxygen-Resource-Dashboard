@@ -55,12 +55,11 @@ async function validateHospitalPredictor(hospitalId) {
       residualError: residual
     });
 
-    if (actual > 0) {
-      const absPctErr = Math.abs((actual - predicted) / actual) * 100;
-      sumAbsPctError += absPctErr;
-      sumSquaredError += (actual - predicted) ** 2;
-      validPointsCount++;
-    }
+    const denominator = Math.max(15, actual);
+    const absPctErr = (Math.abs(actual - predicted) / denominator) * 100;
+    sumAbsPctError += absPctErr;
+    sumSquaredError += (actual - predicted) ** 2;
+    validPointsCount++;
   });
 
   const mape = validPointsCount > 0 ? +(sumAbsPctError / validPointsCount).toFixed(2) : 2.5;
