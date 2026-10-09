@@ -228,13 +228,15 @@ async function runLiveTests() {
     assert(loginRes.body.success === true && loginRes.body.token.startsWith('AUTH-'), 'Issues signed authentication session token');
     assert(loginRes.body.hospital.id === 'HOSP-01', 'Authenticated hospital session resolved to HOSP-01');
 
-    // Test new hospital registration
+    // Test new hospital registration with Hospital Registration Number
     const testRegEmail = `dispatch-${Date.now()}@valleycrest.med`;
+    const testRegNo = `MOH-REG-2026-${Date.now().toString().slice(-4)}`;
     const regRes = await fetchJson('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: `Valley Crest Medical Center ${Date.now().toString().slice(-4)}`,
+        registrationNumber: testRegNo,
         type: 'Community Care Facility',
         address: '770 Valley Crest Road',
         district: 'District 04 East',
@@ -250,10 +252,19 @@ async function runLiveTests() {
     assert(regRes.status === 201, 'POST /api/auth/register returns HTTP 201 Created');
     assert(regRes.body.success === true, 'Hospital registration succeeded');
     assert(regRes.body.hospital.id.startsWith('HOSP-'), 'Assigned unique hospital facility ID');
+    assert(regRes.body.hospital.registrationNumber === testRegNo, `Assigned Hospital Registration Number confirmed: ${testRegNo}`);
 
     // Verify cylinders auto-provisioned
     const cylRes = await fetchJson(`/api/cylinders?hospitalId=${regRes.body.hospital.id}`);
     assert(cylRes.status === 200 && Array.isArray(cylRes.body) && cylRes.body.length >= 50, 'Barcoded oxygen cylinders auto-provisioned for new facility');
+
+    // Test signing in using Hospital Registration Number instead of email
+    const loginByRegRes = await fetchJson('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: testRegNo, password: 'passwordSecure123' })
+    });
+    assert(loginByRegRes.status === 200 && loginByRegRes.body.hospital.registrationNumber === testRegNo, 'Login using Hospital Registration Number succeeded');
 
     // [Suite 14] Emergency Protocol & Transfer Rules Optimizer API
     console.log(`\n[Suite 14] Emergency Protocol & Transfer Rules Optimizer API`);

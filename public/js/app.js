@@ -1991,9 +1991,10 @@ function updateHeaderAuthUI(hospital, user) {
   const hInfo = getHosp(hospital.id);
   const displayName = hospital.name || hInfo.fullName;
   const staffName = user?.contactPerson || 'Staff Coordinator';
+  const regNo = hospital.registrationNumber || user?.registrationNumber || `MOH-REG-2026-${(hospital.id || '').replace('HOSP-', '') || '0101'}`;
 
   if (nameEl) nameEl.textContent = `${hInfo.shortName} (${displayName})`;
-  if (staffEl) staffEl.textContent = `${staffName} • Connected`;
+  if (staffEl) staffEl.textContent = `${staffName} • Reg: ${regNo}`;
   if (loginSelect) loginSelect.value = hospital.id;
   if (label) label.textContent = `${hInfo.shortName} (${displayName})`;
 }
@@ -2044,6 +2045,13 @@ function switchAuthTab(tab) {
     }
     if (tabRegisterBtn) {
       tabRegisterBtn.className = 'flex-1 py-2 rounded-md text-white bg-emerald-600 shadow-sm transition text-center cursor-pointer';
+    }
+
+    // Prefill default Hospital Registration Number suggestion if empty
+    const regInput = document.getElementById('regRegistrationNumber');
+    if (regInput && !regInput.value) {
+      const rnd = Math.floor(1000 + Math.random() * 9000);
+      regInput.value = `MOH-REG-2026-${rnd}`;
     }
   }
 }
@@ -2163,6 +2171,7 @@ async function handleLoginSubmit(e) {
 async function handleRegisterSubmit(e) {
   e.preventDefault();
 
+  const registrationNumber = document.getElementById('regRegistrationNumber')?.value.trim();
   const name = document.getElementById('regHospitalName').value.trim();
   const type = document.getElementById('regHospitalType').value;
   const address = document.getElementById('regAddress').value.trim();
@@ -2175,8 +2184,8 @@ async function handleRegisterSubmit(e) {
   const email = document.getElementById('regEmail').value.trim();
   const password = document.getElementById('regPassword').value;
 
-  if (!name || !email || !password || !address) {
-    showAuthAlert('Please fill in all required fields (*).', true);
+  if (!name || !email || !password || !address || !registrationNumber) {
+    showAuthAlert('Please fill in all required fields (*), including Hospital Registration Number.', true);
     return;
   }
 
@@ -2192,6 +2201,7 @@ async function handleRegisterSubmit(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name,
+        registrationNumber,
         type,
         address,
         district,

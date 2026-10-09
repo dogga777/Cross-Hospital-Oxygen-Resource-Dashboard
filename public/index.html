@@ -910,8 +910,8 @@
 
         <form id="formLogin" class="space-y-3.5">
           <div>
-            <label for="loginEmail" class="block text-xs font-semibold text-slate-700 mb-1">Coordinator Email or Registered Facility</label>
-            <input type="text" id="loginEmail" required placeholder="admin@metro.med" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-slate-800">
+            <label for="loginEmail" class="block text-xs font-semibold text-slate-700 mb-1">Coordinator Email or Hospital Registration Number</label>
+            <input type="text" id="loginEmail" required placeholder="e.g. admin@metro.med or MOH-REG-2026-0101" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-slate-800">
           </div>
 
           <div>
@@ -945,12 +945,23 @@
         </div>
 
         <form id="formRegister" class="space-y-3.5 text-xs">
-          <!-- Hospital Name & Facility Type -->
+          <!-- Hospital Registration Number & Facility Name -->
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">
+                Hospital Registration Number *
+                <span class="text-[10px] text-slate-400 font-normal">(MOH / State Reg ID)</span>
+              </label>
+              <input type="text" id="regRegistrationNumber" required placeholder="e.g. MOH-REG-2026-0842" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition font-mono uppercase">
+            </div>
             <div>
               <label class="block font-semibold text-slate-700 mb-1">Hospital Facility Name *</label>
               <input type="text" id="regHospitalName" required placeholder="e.g. City Hope Medical Center" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
             </div>
+          </div>
+
+          <!-- Facility Classification & District -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label class="block font-semibold text-slate-700 mb-1">Facility Classification *</label>
               <select id="regHospitalType" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition bg-white">
@@ -961,6 +972,10 @@
                 <option value="Urban Acute Care Clinic">Urban Acute Care Clinic</option>
                 <option value="Specialty Surgical Institute">Specialty Surgical Institute</option>
               </select>
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">District / Zone</label>
+              <input type="text" id="regDistrict" value="Metro District 04" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
             </div>
           </div>
 

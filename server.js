@@ -410,6 +410,7 @@ app.post('/api/auth/register', async (req, res) => {
   try {
     const {
       name,
+      registrationNumber,
       type,
       district,
       address,
@@ -464,6 +465,17 @@ app.post('/api/auth/register', async (req, res) => {
     }
     const newId = `HOSP-${String(maxNum + 1).padStart(2, '0')}`;
 
+    // Clean or auto-generate official Hospital Registration Number
+    const cleanRegNo = (registrationNumber && registrationNumber.trim())
+      ? registrationNumber.trim().toUpperCase()
+      : `MOH-REG-2026-${String(maxNum + 1).padStart(4, '0')}`;
+
+    // Check if registration number is already registered by another facility
+    const existingReg = await hospCol.findOne({ registrationNumber: cleanRegNo });
+    if (existingReg) {
+      return res.status(409).json({ error: `Hospital registration number "${cleanRegNo}" is already in use by ${existingReg.name}.` });
+    }
+
     // Clean prefix for cylinder barcode serial numbers (e.g. HOPE, ANNE, CITY)
     const rawLetters = cleanName.replace(/[^A-Za-z]/g, '').toUpperCase();
     const prefix = (rawLetters.slice(0, 4) || 'GEN').padEnd(3, 'X');
@@ -481,6 +493,7 @@ app.post('/api/auth/register', async (req, res) => {
     const hospitalDoc = {
       id: newId,
       name: cleanName,
+      registrationNumber: cleanRegNo,
       type: type || 'General Acute Care & Emergency',
       capacity: parsedCap,
       currentStock: parsedStock,
@@ -508,6 +521,7 @@ app.post('/api/auth/register', async (req, res) => {
       id: `USER-${Date.now()}`,
       hospitalId: newId,
       hospitalName: cleanName,
+      registrationNumber: cleanRegNo,
       email: cleanEmail,
       passwordHash: hashPassword(password),
       contactPerson: dispatchContact || 'Staff Coordinator',
@@ -531,7 +545,7 @@ app.post('/api/auth/register', async (req, res) => {
       hospital: hospitalDoc
     });
 
-    console.log(`[Auth] ✓ Registered new hospital: ${cleanName} (${newId}) by ${cleanEmail}`);
+    console.log(`[Auth] ✓ Registered new hospital: ${cleanName} (${newId}) Reg: ${cleanRegNo} by ${cleanEmail}`);
 
     res.status(201).json({
       success: true,
@@ -539,6 +553,7 @@ app.post('/api/auth/register', async (req, res) => {
       hospital: {
         id: hospitalDoc.id,
         name: hospitalDoc.name,
+        registrationNumber: hospitalDoc.registrationNumber,
         type: hospitalDoc.type,
         address: hospitalDoc.location?.address,
         phone: hospitalDoc.location?.phone,
@@ -550,6 +565,7 @@ app.post('/api/auth/register', async (req, res) => {
       },
       user: {
         email: userDoc.email,
+        registrationNumber: userDoc.registrationNumber,
         contactPerson: userDoc.contactPerson,
         role: userDoc.role
       }
@@ -572,26 +588,42 @@ app.post('/api/auth/login', async (req, res) => {
     let user = null;
 
     if (email && email.trim()) {
-      // Login via email & password
-      const cleanEmail = email.trim().toLowerCase();
+      const cleanInput = email.trim();
+      const cleanEmail = cleanInput.toLowerCase();
       user = await usersCol.findOne({ email: cleanEmail });
 
       if (!user) {
-        return res.status(401).json({ error: 'No account found with this email. Please register your hospital.' });
+        // Check if user entered hospital registration number or ID
+        const matchedHosp = await hospCol.findOne({
+          $or: [
+            { registrationNumber: cleanInput.toUpperCase() },
+            { id: cleanInput.toUpperCase() }
+          ]
+        });
+        if (matchedHosp) {
+          user = await usersCol.findOne({ hospitalId: matchedHosp.id });
+          hospital = matchedHosp;
+        }
+      }
+
+      if (!user) {
+        return res.status(401).json({ error: 'No account found with this email or hospital registration number. Please check or register.' });
       }
 
       if (password && hashPassword(password) !== user.passwordHash) {
         return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
       }
 
-      hospital = await hospCol.findOne({ id: user.hospitalId });
+      if (!hospital) {
+        hospital = await hospCol.findOne({ id: user.hospitalId });
+      }
     } else if (hospitalId) {
       // Direct hospital selector / demo sign in
       hospital = await hospCol.findOne({ id: hospitalId });
       if (!hospital) return res.status(404).json({ error: 'Hospital not found.' });
       user = await usersCol.findOne({ hospitalId });
     } else {
-      return res.status(400).json({ error: 'Please enter your account email and password, or select a facility.' });
+      return res.status(400).json({ error: 'Please enter your account email or hospital registration number and password, or select a facility.' });
     }
 
     if (!hospital) {
@@ -606,6 +638,7 @@ app.post('/api/auth/login', async (req, res) => {
       hospital: {
         id: hospital.id,
         name: hospital.name,
+        registrationNumber: hospital.registrationNumber || user?.registrationNumber || `MOH-REG-2026-${hospital.id?.replace('HOSP-', '') || '01'}`,
         type: hospital.type,
         address: hospital.location?.address,
         phone: hospital.location?.phone,
@@ -616,6 +649,7 @@ app.post('/api/auth/login', async (req, res) => {
       },
       user: {
         email: user?.email || `coordinator@${hospital.id.toLowerCase()}.med`,
+        registrationNumber: hospital.registrationNumber || user?.registrationNumber,
         contactPerson: user?.contactPerson || hospital.location?.dispatchContact || 'Staff Coordinator',
         role: user?.role || 'HOSPITAL_COORDINATOR'
       }

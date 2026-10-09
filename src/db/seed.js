@@ -72,6 +72,7 @@ const INITIAL_HOSPITALS = [
   {
     id: 'HOSP-01',
     name: 'Metro General Hospital',
+    registrationNumber: 'MOH-REG-2026-0101',
     type: 'Level 1 Trauma & Medical Center',
     capacity: 350,
     currentStock: 68,
@@ -93,6 +94,7 @@ const INITIAL_HOSPITALS = [
   {
     id: 'HOSP-02',
     name: 'St. Jude Medical Center',
+    registrationNumber: 'MOH-REG-2026-0202',
     type: 'Tertiary Teaching Hospital',
     capacity: 320,
     currentStock: 248,
@@ -114,6 +116,7 @@ const INITIAL_HOSPITALS = [
   {
     id: 'HOSP-03',
     name: 'Riverbank Emergency Annex',
+    registrationNumber: 'MOH-REG-2026-0303',
     type: 'Critical Overflow Ward',
     capacity: 160,
     currentStock: 28,
@@ -135,6 +138,7 @@ const INITIAL_HOSPITALS = [
   {
     id: 'HOSP-04',
     name: 'Oak Valley Community Hospital',
+    registrationNumber: 'MOH-REG-2026-0404',
     type: 'Suburban Community Care',
     capacity: 200,
     currentStock: 158,
@@ -156,6 +160,7 @@ const INITIAL_HOSPITALS = [
   {
     id: 'HOSP-05',
     name: 'Mercy Urban Care',
+    registrationNumber: 'MOH-REG-2026-0505',
     type: 'Urban Acute Clinic',
     capacity: 220,
     currentStock: 86,
@@ -177,6 +182,7 @@ const INITIAL_HOSPITALS = [
   {
     id: 'HOSP-06',
     name: 'Highland Specialty Institute',
+    registrationNumber: 'MOH-REG-2026-0606',
     type: 'Elective & Surgical Specialty',
     capacity: 180,
     currentStock: 152,

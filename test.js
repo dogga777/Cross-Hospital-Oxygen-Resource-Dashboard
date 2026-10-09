@@ -98,6 +98,7 @@ async function runSystemTests() {
     const testRegHosp = {
       id: 'HOSP-07',
       name: 'City Hope Medical Center',
+      registrationNumber: 'MOH-REG-2026-0707',
       type: 'Level 1 Trauma & Medical Center',
       capacity: 300,
       currentStock: 90,
@@ -121,6 +122,7 @@ async function runSystemTests() {
       id: 'USER-07',
       hospitalId: 'HOSP-07',
       hospitalName: testRegHosp.name,
+      registrationNumber: 'MOH-REG-2026-0707',
       email: 'admin@cityhope.med',
       passwordHash: hashPassword('securePass123'),
       contactPerson: 'Dr. Amanda Reed',
@@ -134,6 +136,7 @@ async function runSystemTests() {
 
     const foundHosp = await db.collection('hospitals').findOne({ id: 'HOSP-07' });
     assert(foundHosp && foundHosp.name === 'City Hope Medical Center', `Hospital registered in database (Found: ${foundHosp?.name})`);
+    assert(foundHosp && foundHosp.registrationNumber === 'MOH-REG-2026-0707', `Hospital registration number verified in database (Reg: ${foundHosp?.registrationNumber})`);
 
     const foundUser = await db.collection('users').findOne({ email: 'admin@cityhope.med' });
     assert(foundUser && foundUser.passwordHash === hashPassword('securePass123'), `Hospital user credentials securely hashed and stored`);
