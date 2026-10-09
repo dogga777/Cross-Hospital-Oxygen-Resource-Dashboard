@@ -298,7 +298,15 @@ app.post('/api/transfers/execute', async (req, res) => {
   }
 });
 
-// Simulation Controls
+// Get Simulation Status
+app.get('/api/simulation/status', (req, res) => {
+  res.json({
+    isRunning: simulator.isRunning,
+    intervalMs: simulator.intervalMs
+  });
+});
+
+// Simulation Controls (Speed and Play/Pause)
 app.post('/api/simulation/control', async (req, res) => {
   try {
     const { action, intervalMs } = req.body;
@@ -307,6 +315,12 @@ app.post('/api/simulation/control', async (req, res) => {
     else if (action === 'reset') await simulator.reset();
 
     if (intervalMs) simulator.setInterval(parseInt(intervalMs, 10));
+
+    broadcastWs({
+      type: 'SIMULATION_STATUS',
+      isRunning: simulator.isRunning,
+      intervalMs: simulator.intervalMs
+    });
 
     res.json({
       success: true,

@@ -273,7 +273,7 @@
       </div>
 
       <div id="rulesPanelBody" class="p-4 sm:p-5 space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           
           <!-- Rule 1: Emergency Stock Trigger Threshold -->
           <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
@@ -299,6 +299,13 @@
               <span>20 cyl (Default)</span>
               <span>40 cyl</span>
             </div>
+            <div class="flex items-center gap-1 mt-2.5 pt-2 border-t border-slate-100 flex-wrap">
+              <span class="text-[10px] font-semibold text-slate-400">Presets:</span>
+              <button type="button" class="btn-thresh-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-800 transition cursor-pointer" data-thresh="15">15 cyl</button>
+              <button type="button" class="btn-thresh-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-100 text-rose-800 transition cursor-pointer" data-thresh="20">20 cyl</button>
+              <button type="button" class="btn-thresh-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-800 transition cursor-pointer" data-thresh="25">25 cyl</button>
+              <button type="button" class="btn-thresh-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-800 transition cursor-pointer" data-thresh="30">30 cyl</button>
+            </div>
             <p class="text-[11px] text-slate-500 leading-relaxed pt-1">
               Triggers cross-hospital emergency code and immediate donor pairing when facility stock drops to or below this level.
             </p>
@@ -315,11 +322,20 @@
               </span>
             </div>
             <select id="ruleBatchSelect" class="w-full text-xs p-2 rounded-lg border border-slate-300 font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
-              <option value="30">30 Cylinders (Rapid Light Dispatch)</option>
+              <option value="20">20 Cylinders (Rapid Minivan)</option>
+              <option value="30">30 Cylinders (Light Ambulance)</option>
               <option value="40" selected>40 Cylinders (Standard Regional Protocol)</option>
               <option value="50">50 Cylinders (High-Capacity Van)</option>
               <option value="60">60 Cylinders (Major Cryo Relocation)</option>
+              <option value="80">80 Cylinders (Heavy Transport)</option>
             </select>
+            <div class="flex items-center gap-1 mt-2.5 pt-2 border-t border-slate-100 flex-wrap">
+              <span class="text-[10px] font-semibold text-slate-400">Presets:</span>
+              <button type="button" class="btn-batch-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 transition cursor-pointer" data-batch="20">20 cyl</button>
+              <button type="button" class="btn-batch-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-800 transition cursor-pointer" data-batch="40">40 cyl</button>
+              <button type="button" class="btn-batch-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 transition cursor-pointer" data-batch="60">60 cyl</button>
+              <button type="button" class="btn-batch-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800 transition cursor-pointer" data-batch="80">80 cyl</button>
+            </div>
             <p class="text-[11px] text-slate-500 leading-relaxed pt-1">
               Number of oxygen cylinders loaded onto dispatch ambulance per emergency transfer mission.
             </p>
@@ -339,8 +355,56 @@
               <option value="HIGHEST_STOCK" selected>Highest Surplus Stock Hub (Max Reserve First)</option>
               <option value="SHORTEST_DISTANCE">Shortest Ambulance Route (Fastest ETA First)</option>
             </select>
+            <div class="flex items-center gap-1.5 mt-2.5 pt-2 border-t border-slate-100 flex-wrap">
+              <span class="text-[10px] font-semibold text-slate-400">Strategy:</span>
+              <button type="button" class="btn-strat-preset px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 transition cursor-pointer" data-strat="HIGHEST_STOCK">Max Surplus</button>
+              <button type="button" class="btn-strat-preset px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800 transition cursor-pointer" data-strat="SHORTEST_DISTANCE">Fastest ETA</button>
+            </div>
             <p class="text-[11px] text-slate-500 leading-relaxed pt-1">
               Optimizes whether transfers prioritize facilities with the highest stock margin or the quickest travel distance.
+            </p>
+          </div>
+
+          <!-- Rule 4: Simulator Speed & Cadence -->
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2 flex flex-col justify-between">
+            <div>
+              <div class="flex items-center justify-between">
+                <label for="simSpeedSlider" class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                  <span>Simulator Stream Speed</span>
+                </label>
+                <span id="simSpeedDisplay" class="px-2 py-0.5 rounded bg-cyan-50 text-cyan-800 font-mono font-bold text-xs border border-cyan-200 flex items-center gap-1.5">
+                  <span id="simSpeedPulse" class="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-ping"></span>
+                  <span id="simSpeedLabel">3.0s / Tick</span>
+                </span>
+              </div>
+              <input 
+                id="simSpeedSlider" 
+                type="range" 
+                min="1000" 
+                max="6000" 
+                step="500" 
+                value="3000" 
+                class="w-full cursor-pointer h-2 bg-slate-200 rounded-lg accent-cyan-600 mt-2"
+              />
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono mt-1">
+                <span>1.0s (Fast)</span>
+                <span>3.0s (Def)</span>
+                <span>6.0s (Slow)</span>
+              </div>
+              <div class="flex items-center justify-between gap-1 mt-2.5 pt-2 border-t border-slate-100">
+                <div class="flex items-center gap-1 flex-wrap">
+                  <button type="button" class="btn-speed-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-cyan-100 text-slate-700 hover:text-cyan-800 transition cursor-pointer" data-speed="1000">1s</button>
+                  <button type="button" class="btn-speed-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-cyan-100 text-slate-700 hover:text-cyan-800 transition cursor-pointer" data-speed="2000">2s</button>
+                  <button type="button" class="btn-speed-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-cyan-100 text-cyan-800 transition cursor-pointer" data-speed="3000">3s</button>
+                  <button type="button" class="btn-speed-preset px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 hover:bg-cyan-100 text-slate-700 hover:text-cyan-800 transition cursor-pointer" data-speed="5000">5s</button>
+                </div>
+                <button id="btnToggleSimFeed" type="button" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 hover:bg-slate-900 text-white transition cursor-pointer shrink-0">
+                  ⏸ Pause
+                </button>
+              </div>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed pt-1">
+              Tweak real-time tick cadence across patient oxygen consumption and automated ML prediction runs.
             </p>
           </div>
 

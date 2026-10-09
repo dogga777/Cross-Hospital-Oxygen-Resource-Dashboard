@@ -22,6 +22,10 @@ let state = {
     emergencyThreshold: 20,
     batchQuantity: 40,
     pairingStrategy: 'HIGHEST_STOCK'
+  },
+  simulation: {
+    isRunning: true,
+    intervalMs: 3000
   }
 };
 
@@ -193,6 +197,7 @@ async function init() {
   setupOptimizerRulesEventListeners();
   updateQuickScanChips();
   await loadOptimizerRules();
+  await loadSimulationStatus();
   await loadInitialData();
   await loadNotifications();
   setupWebSocket();
@@ -275,6 +280,9 @@ function setupWebSocket() {
         renderAll();
         updateMapData();
         showToast(`⚙️ Optimizer rules updated across network (Threshold: ${data.rules?.emergencyThreshold || 20} cyl)`, 'info');
+      } else if (data.type === 'SIMULATION_STATUS') {
+        state.simulation = { isRunning: data.isRunning, intervalMs: data.intervalMs };
+        syncSimulationUI();
       } else if (data.type === 'NOTIFICATION_RECEIVED') {
         loadNotifications();
         showToast(`🚨 URGENT NOTIFICATION: Shortage detected at ${data.notification.fromHospitalName}!`, 'error');
@@ -1218,7 +1226,7 @@ function syncRulesUI(rules) {
     slider.value = rules.emergencyThreshold;
   }
   if (threshDisplay && rules.emergencyThreshold !== undefined) {
-    threshDisplay.textContent = `${rules.emergencyThreshold} Cylinders`;
+    threshDisplay.textContent = `≤ ${rules.emergencyThreshold} Cylinders`;
   }
   if (badgeThresh && rules.emergencyThreshold !== undefined) {
     badgeThresh.textContent = rules.emergencyThreshold;
@@ -1234,6 +1242,72 @@ function syncRulesUI(rules) {
   }
   if (stratDisplay && rules.pairingStrategy) {
     stratDisplay.textContent = rules.pairingStrategy === 'HIGHEST_STOCK' ? 'MAX SURPLUS' : 'MIN DISTANCE';
+  }
+
+  // Update preset pills active state
+  document.querySelectorAll('.btn-thresh-preset').forEach(b => {
+    const isAct = Number(b.getAttribute('data-thresh')) === Number(rules.emergencyThreshold);
+    b.className = `btn-thresh-preset px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+      isAct ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-800'
+    }`;
+  });
+
+  document.querySelectorAll('.btn-batch-preset').forEach(b => {
+    const isAct = Number(b.getAttribute('data-batch')) === Number(rules.batchQuantity);
+    b.className = `btn-batch-preset px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+      isAct ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800'
+    }`;
+  });
+
+  document.querySelectorAll('.btn-strat-preset').forEach(b => {
+    const isAct = b.getAttribute('data-strat') === rules.pairingStrategy;
+    b.className = `btn-strat-preset px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+      isAct ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800'
+    }`;
+  });
+}
+
+function syncSimulationUI() {
+  const speedSlider = document.getElementById('simSpeedSlider');
+  const speedLabel = document.getElementById('simSpeedLabel');
+  const btnToggleSim = document.getElementById('btnToggleSimFeed');
+  const speedPulse = document.getElementById('simSpeedPulse');
+
+  if (!state.simulation) return;
+
+  const ms = state.simulation.intervalMs || 3000;
+  if (speedSlider) speedSlider.value = ms;
+  if (speedLabel) {
+    speedLabel.textContent = state.simulation.isRunning ? `${(ms / 1000).toFixed(1)}s / Tick` : 'PAUSED';
+  }
+  if (speedPulse) {
+    speedPulse.className = state.simulation.isRunning ? 'h-1.5 w-1.5 rounded-full bg-cyan-500 animate-ping' : 'h-1.5 w-1.5 rounded-full bg-slate-400';
+  }
+  if (btnToggleSim) {
+    btnToggleSim.textContent = state.simulation.isRunning ? '⏸ Pause' : '▶ Resume';
+    btnToggleSim.className = `px-2 py-0.5 rounded text-[10px] font-bold text-white transition cursor-pointer shrink-0 ${
+      state.simulation.isRunning ? 'bg-slate-800 hover:bg-slate-900' : 'bg-emerald-600 hover:bg-emerald-700'
+    }`;
+  }
+
+  // Update speed preset buttons active state
+  document.querySelectorAll('.btn-speed-preset').forEach(b => {
+    const isAct = Number(b.getAttribute('data-speed')) === ms;
+    b.className = `btn-speed-preset px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+      isAct ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 hover:bg-cyan-100 text-slate-700 hover:text-cyan-800'
+    }`;
+  });
+}
+
+async function loadSimulationStatus() {
+  try {
+    const res = await fetch('/api/simulation/status');
+    if (res.ok) {
+      state.simulation = await res.json();
+      syncSimulationUI();
+    }
+  } catch (err) {
+    console.error('Failed to load simulation status:', err);
   }
 }
 
@@ -1261,27 +1335,148 @@ function setupOptimizerRulesEventListeners() {
     });
   }
 
-  // Slider change
+  // Threshold slider change
   if (slider) {
     slider.addEventListener('input', (e) => {
       const val = e.target.value;
-      if (threshDisplay) threshDisplay.textContent = `${val} Cylinders`;
+      if (threshDisplay) threshDisplay.textContent = `≤ ${val} Cylinders`;
       if (badgeThresh) badgeThresh.textContent = val;
+      document.querySelectorAll('.btn-thresh-preset').forEach(b => {
+        const isAct = Number(b.getAttribute('data-thresh')) === Number(val);
+        b.className = `btn-thresh-preset px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+          isAct ? 'bg-rose-100 text-rose-800' : 'bg-slate-100 hover:bg-rose-100 text-slate-700 hover:text-rose-800'
+        }`;
+      });
     });
   }
+
+  // Threshold presets click
+  document.querySelectorAll('.btn-thresh-preset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const val = e.currentTarget.getAttribute('data-thresh');
+      if (slider) {
+        slider.value = val;
+        slider.dispatchEvent(new Event('input'));
+      }
+    });
+  });
 
   // Batch select change
   if (batchSelect) {
     batchSelect.addEventListener('change', (e) => {
-      if (batchDisplay) batchDisplay.textContent = `${e.target.value} Units`;
+      const val = e.target.value;
+      if (batchDisplay) batchDisplay.textContent = `${val} Units`;
+      document.querySelectorAll('.btn-batch-preset').forEach(b => {
+        const isAct = Number(b.getAttribute('data-batch')) === Number(val);
+        b.className = `btn-batch-preset px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+          isAct ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 hover:bg-indigo-100 text-slate-700 hover:text-indigo-800'
+        }`;
+      });
     });
   }
+
+  // Batch presets click
+  document.querySelectorAll('.btn-batch-preset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const val = e.currentTarget.getAttribute('data-batch');
+      if (batchSelect) {
+        batchSelect.value = val;
+        batchSelect.dispatchEvent(new Event('change'));
+      }
+    });
+  });
 
   // Strategy select change
   if (stratSelect) {
     stratSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
       if (stratDisplay) {
-        stratDisplay.textContent = e.target.value === 'HIGHEST_STOCK' ? 'MAX SURPLUS' : 'MIN DISTANCE';
+        stratDisplay.textContent = val === 'HIGHEST_STOCK' ? 'MAX SURPLUS' : 'MIN DISTANCE';
+      }
+      document.querySelectorAll('.btn-strat-preset').forEach(b => {
+        const isAct = b.getAttribute('data-strat') === val;
+        b.className = `btn-strat-preset px-2 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+          isAct ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 hover:bg-emerald-100 text-slate-700 hover:text-emerald-800'
+        }`;
+      });
+    });
+  }
+
+  // Strategy presets click
+  document.querySelectorAll('.btn-strat-preset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const val = e.currentTarget.getAttribute('data-strat');
+      if (stratSelect) {
+        stratSelect.value = val;
+        stratSelect.dispatchEvent(new Event('change'));
+      }
+    });
+  });
+
+  // Simulator Speed Slider & Presets
+  const speedSlider = document.getElementById('simSpeedSlider');
+  const speedLabel = document.getElementById('simSpeedLabel');
+  const btnToggleSim = document.getElementById('btnToggleSimFeed');
+
+  async function setSimulatorInterval(ms) {
+    if (speedSlider) speedSlider.value = ms;
+    if (speedLabel && (!state.simulation || state.simulation.isRunning)) {
+      speedLabel.textContent = `${(ms / 1000).toFixed(1)}s / Tick`;
+    }
+    document.querySelectorAll('.btn-speed-preset').forEach(b => {
+      const isAct = Number(b.getAttribute('data-speed')) === ms;
+      b.className = `btn-speed-preset px-1.5 py-0.5 rounded text-[10px] font-bold transition cursor-pointer ${
+        isAct ? 'bg-cyan-100 text-cyan-800' : 'bg-slate-100 hover:bg-cyan-100 text-slate-700 hover:text-cyan-800'
+      }`;
+    });
+
+    try {
+      const res = await fetch('/api/simulation/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ intervalMs: ms })
+      });
+      const data = await res.json();
+      state.simulation = data;
+      showToast(`⚡ Simulator cadence set to ${(ms / 1000).toFixed(1)}s per tick!`, 'info');
+    } catch (err) {
+      showToast('Failed to adjust simulator speed: ' + err.message, 'error');
+    }
+  }
+
+  if (speedSlider) {
+    speedSlider.addEventListener('input', (e) => {
+      const ms = Number(e.target.value);
+      if (speedLabel) speedLabel.textContent = `${(ms / 1000).toFixed(1)}s / Tick`;
+    });
+    speedSlider.addEventListener('change', (e) => {
+      setSimulatorInterval(Number(e.target.value));
+    });
+  }
+
+  document.querySelectorAll('.btn-speed-preset').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const ms = Number(e.currentTarget.getAttribute('data-speed'));
+      setSimulatorInterval(ms);
+    });
+  });
+
+  if (btnToggleSim) {
+    btnToggleSim.addEventListener('click', async () => {
+      const isCurrentlyRunning = state.simulation ? state.simulation.isRunning : true;
+      const action = isCurrentlyRunning ? 'pause' : 'start';
+      try {
+        const res = await fetch('/api/simulation/control', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action })
+        });
+        const data = await res.json();
+        state.simulation = data;
+        syncSimulationUI();
+        showToast(data.isRunning ? '▶ Simulator live stream resumed' : '⏸ Simulator feed paused', 'info');
+      } catch (err) {
+        showToast('Error toggling simulation feed: ' + err.message, 'error');
       }
     });
   }
