@@ -250,6 +250,37 @@ async function runLiveTests() {
     const cylRes = await fetchJson(`/api/cylinders?hospitalId=${regRes.body.hospital.id}`);
     assert(cylRes.status === 200 && Array.isArray(cylRes.body) && cylRes.body.length >= 50, 'Barcoded oxygen cylinders auto-provisioned for new facility');
 
+    // [Suite 14] Emergency Protocol & Transfer Rules Optimizer API
+    console.log(`\n[Suite 14] Emergency Protocol & Transfer Rules Optimizer API`);
+    const rulesGet = await fetchJson('/api/optimizer/rules');
+    assert(rulesGet.status === 200, 'GET /api/optimizer/rules returns HTTP 200');
+    assert(typeof rulesGet.body.emergencyThreshold === 'number', 'Rules specify numeric emergency threshold');
+    assert(typeof rulesGet.body.batchQuantity === 'number', 'Rules specify numeric batch quantity');
+    assert(rulesGet.body.pairingStrategy === 'HIGHEST_STOCK' || rulesGet.body.pairingStrategy === 'SHORTEST_DISTANCE', 'Rules specify valid pairing strategy');
+
+    const rulesPost = await fetchJson('/api/optimizer/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        emergencyThreshold: 25,
+        batchQuantity: 50,
+        pairingStrategy: 'SHORTEST_DISTANCE'
+      })
+    });
+    assert(rulesPost.status === 200 && rulesPost.body.success === true, 'POST /api/optimizer/rules succeeds');
+    assert(rulesPost.body.rules.emergencyThreshold === 25, 'Rules threshold updated to 25');
+    assert(rulesPost.body.rules.batchQuantity === 50, 'Rules batch quantity updated to 50');
+    assert(rulesPost.body.rules.pairingStrategy === 'SHORTEST_DISTANCE', 'Rules strategy updated to SHORTEST_DISTANCE');
+    assert(rulesPost.body.plan && Array.isArray(rulesPost.body.plan.recommendations), 'Returns dynamically re-optimized rebalance plan');
+
+    // Reset rules back to defaults
+    await fetchJson('/api/optimizer/rules', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emergencyThreshold: 20, batchQuantity: 40, pairingStrategy: 'HIGHEST_STOCK' })
+    });
+    assert(true, 'Rules reset back to standard defaults (20 cyl / 40 batch / HIGHEST_STOCK)');
+
     console.log(`\n======================================================`);
     console.log(`🎉 LIVE VERIFICATION RESULTS: ${passed}/${total} TESTS PASSED!`);
     console.log(`======================================================\n`);

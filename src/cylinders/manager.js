@@ -128,11 +128,16 @@ async function processBarcodeScan(serialNumber, action = 'CONSUME', currentHospi
     );
   }
 
-  // Emergency Shortage Detection Check: If stock drops to <= 20 cylinders!
+  // Emergency Shortage Detection Check: If stock drops to <= configured emergency threshold!
   let emergencyTriggered = false;
   let notificationCreated = null;
 
-  if (updatedStock <= 20 && stockChange < 0) {
+  const { getOptimizerRules } = require('../optimizer/rebalance');
+  const rules = getOptimizerRules();
+  const emergencyThreshold = Number(rules?.emergencyThreshold) || 20;
+  const batchQuantity = Number(rules?.batchQuantity) || 40;
+
+  if (updatedStock <= emergencyThreshold && stockChange < 0) {
     emergencyTriggered = true;
 
     // Find the hospital with the MOST cylinders to be the recipient of this alert
@@ -147,10 +152,10 @@ async function processBarcodeScan(serialNumber, action = 'CONSUME', currentHospi
       toHospitalId: donorHosp.id,
       toHospitalName: donorHosp.name,
       type: 'CRITICAL_SHORTAGE_DETECTED',
-      urgency: 'EMERGENCY (≤ 20 CYLINDERS)',
+      urgency: `EMERGENCY (≤ ${emergencyThreshold} CYLINDERS)`,
       currentStockLeft: updatedStock,
-      requestedQuantity: 40,
-      message: `🚨 CRITICAL ALERT: ${hospital.name} scanned a cylinder and oxygen reserve has dropped to ${updatedStock} cylinders (≤ 20 threshold)! Urgent dispatch requested from ${donorHosp.name}.`,
+      requestedQuantity: batchQuantity,
+      message: `🚨 CRITICAL ALERT: ${hospital.name} scanned a cylinder and oxygen reserve has dropped to ${updatedStock} cylinders (≤ ${emergencyThreshold} threshold)! Urgent dispatch requested from ${donorHosp.name}.`,
       status: 'PENDING_APPROVAL',
       timestamp: Date.now()
     };

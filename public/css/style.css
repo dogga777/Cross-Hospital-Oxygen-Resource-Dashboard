@@ -1,65 +1,160 @@
-/* Clean, Modern Healthcare Operations Center Styling */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+/* Advanced Clinical Command Center Styling */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+:root {
+  --primary-navy: #0f172a;
+  --panel-bg: #ffffff;
+  --accent-cyan: #06b6d4;
+  --accent-emerald: #10b981;
+  --accent-rose: #f43f5e;
+  --accent-amber: #f59e0b;
+  --border-subtle: #e2e8f0;
+}
 
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f0f4f8;
+  background-color: #f1f5f9;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.04) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.04) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.03) 0px, transparent 50%);
+  background-attachment: fixed;
   color: #1e293b;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.012em;
+}
+
+.font-mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Glassmorphism & High-Tech Cards */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+}
+
+.glass-card-dark {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(51, 65, 85, 0.7);
+  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
+}
+
+/* Metric KPI Card Hover & Elevation */
+.kpi-card {
+  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 28px -6px rgba(15, 23, 42, 0.08);
+}
+
+/* Pulsing Emergency Beacon */
+@keyframes beaconPulse {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(244, 63, 94, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
+  }
+}
+.beacon-active {
+  animation: beaconPulse 2s infinite;
+}
+
+/* Custom range slider for emergency threshold */
+input[type=range] {
+  accent-color: #e11d48;
 }
 
 /* Map container styling */
 #hospitalMap {
-  height: 380px;
+  height: 420px;
   width: 100%;
-  border-radius: 0.75rem;
+  border-radius: 0.85rem;
   z-index: 10;
+  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
 }
 
 /* Custom pulse for critical shortages */
 @keyframes criticalGlow {
   0%, 100% {
     border-color: rgba(239, 68, 68, 0.4);
-    box-shadow: 0 0 15px rgba(239, 68, 68, 0.15);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.2);
   }
   50% {
-    border-color: rgba(239, 68, 68, 0.85);
-    box-shadow: 0 0 25px rgba(239, 68, 68, 0.35);
+    border-color: rgba(239, 68, 68, 0.95);
+    box-shadow: 0 0 30px rgba(239, 68, 68, 0.45);
   }
 }
-
 .critical-pulse {
-  animation: criticalGlow 2.5s infinite ease-in-out;
+  animation: criticalGlow 2s infinite ease-in-out;
 }
 
-/* Custom sleek scrollbar for light theme */
+/* Laser scan animation line */
+@keyframes laserScan {
+  0% {
+    top: 0%;
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.2;
+  }
+}
+.laser-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #ef4444, #f43f5e, #ef4444, transparent);
+  box-shadow: 0 0 12px #ef4444;
+  animation: laserScan 2.4s ease-in-out infinite;
+}
+
+/* Sleek Scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
-
 ::-webkit-scrollbar-track {
-  background: #e2e8f0;
-  border-radius: 4px;
+  background: #f1f5f9;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 4px;
+  background: #cbd5e1;
+  border-radius: 9999px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+  background: #94a3b8;
 }
 
-/* Custom Leaflet popup styling */
+/* Leaflet Popup Styling */
 .leaflet-popup-content-wrapper {
-  border-radius: 0.75rem;
+  border-radius: 0.85rem;
   padding: 0;
   overflow: hidden;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 .leaflet-popup-content {
   margin: 0;
   line-height: 1.4;
+}
+.leaflet-container {
+  font-family: inherit;
 }

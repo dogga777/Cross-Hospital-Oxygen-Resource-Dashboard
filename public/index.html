@@ -157,49 +157,221 @@
   <!-- MAIN CONTAINER -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
 
-    <!-- 3. TOP 3 METRIC KPI CARDS (Matching image) -->
-    <section class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- 3. TOP 4 METRIC KPI CARDS (Expanded Clinical Metrics) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       
-      <!-- Card 1: Current oxygen levels -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
-        <div class="h-12 w-6 rounded bg-[#2e7d32] flex-shrink-0 shadow-sm"></div>
-        <div>
-          <div class="text-xs text-slate-500 font-medium">Current oxygen levels</div>
-          <div class="mt-0.5 flex items-baseline gap-1.5">
-            <span id="topTotalCylinders" class="text-2xl font-bold text-emerald-800">273</span>
-            <span class="text-xl font-bold text-slate-800">Cylinders</span>
+      <!-- Card 1: Total District Oxygen Reserves -->
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">District O₂ Reserves</span>
+          <div class="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm shadow-xs">
+            🫁
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-1.5">
+            <span id="topTotalCylinders" class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono">--</span>
+            <span class="text-xs font-bold text-slate-500">Cylinders</span>
+          </div>
+          <!-- Storage capacity gauge bar -->
+          <div class="w-full bg-slate-100 h-1.5 rounded-full mt-2.5 overflow-hidden">
+            <div id="topReservesBar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 70%"></div>
+          </div>
+          <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+            <span id="topReservesPercent">--% of total capacity</span>
+            <span class="text-emerald-700 font-semibold">Active Mesh</span>
           </div>
         </div>
       </div>
 
-      <!-- Card 2: Predicting shortages -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
-        <div class="h-12 w-10 rounded-lg bg-[#e53935] text-white flex-shrink-0 flex items-center justify-center font-black text-xl shadow-sm">
-          !
+      <!-- Card 2: Emergency Shortage Risk Horizon -->
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">Shortage Risk Horizon</span>
+          <div class="h-8 w-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm shadow-xs">
+            🚨
+          </div>
         </div>
-        <div>
-          <div class="text-xs text-slate-500 font-medium">Predicting shortages</div>
-          <div class="mt-0.5 flex items-baseline gap-1.5">
-            <span id="topAtRiskCount" class="text-2xl font-bold text-rose-600">2</span>
-            <span class="text-xl font-bold text-slate-800">Hospitals at risk</span>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-1.5">
+            <span id="topAtRiskCount" class="text-2xl sm:text-3xl font-extrabold text-rose-600 font-mono">--</span>
+            <span class="text-xs font-bold text-slate-500">Facilities At Risk</span>
+          </div>
+          <div class="mt-2 flex items-center gap-1.5 flex-wrap">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800">
+              Trigger: &le; <span id="topRuleThresholdBadge">20</span> cyl
+            </span>
+            <span class="text-[11px] text-slate-400">OLS Forecast</span>
           </div>
         </div>
       </div>
 
-      <!-- Card 3: Transfer activity -->
-      <div class="bg-white rounded-xl border border-slate-200 p-4 shadow-sm flex items-center gap-4">
-        <div class="h-12 w-12 rounded-lg bg-slate-100 text-slate-700 flex-shrink-0 flex items-center justify-center font-bold text-2xl shadow-sm">
-          ⇄
+      <!-- Card 3: Active Patient Oxygen Load -->
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">Active Clinical Demand</span>
+          <div class="h-8 w-8 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold text-sm shadow-xs">
+            👥
+          </div>
         </div>
-        <div>
-          <div class="text-xs text-slate-500 font-medium">Transfer activity</div>
-          <div class="mt-0.5 flex items-baseline gap-1.5">
-            <span id="topActiveTransfersCount" class="text-2xl font-bold text-slate-800">2</span>
-            <span class="text-xl font-bold text-slate-800">Moves on record</span>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-1.5">
+            <span id="topTotalPatients" class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono">--</span>
+            <span class="text-xs font-bold text-slate-500">Patients on O₂</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>Agg. Burn: <strong id="topTotalBurnRate" class="font-mono text-slate-700">--</strong> cyl/hr</span>
+            <span class="text-cyan-700 font-semibold">Live Monitored</span>
           </div>
         </div>
       </div>
 
+      <!-- Card 4: Transfer Activity & Dispatches -->
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
+          <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">Logistics Corridors</span>
+          <div class="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-xs">
+            🚑
+          </div>
+        </div>
+        <div class="mt-3">
+          <div class="flex items-baseline gap-1.5">
+            <span id="topActiveTransfersCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono">--</span>
+            <span class="text-xs font-bold text-slate-500">Dispatches Logged</span>
+          </div>
+          <div class="mt-2 text-[11px] text-slate-500 flex items-center justify-between">
+            <span>Avg Transit: <strong class="text-indigo-700 font-mono">~18 mins</strong></span>
+            <span class="text-emerald-700 font-semibold font-mono">0 Stockouts</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- 3.5 ADVANCED EMERGENCY & TRANSFER RULES PROTOCOL CONTROL PANEL -->
+    <section class="bg-gradient-to-br from-white via-slate-50/70 to-white rounded-xl border border-slate-300 shadow-sm overflow-hidden">
+      <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
+        <div class="flex items-center space-x-3">
+          <div class="h-9 w-9 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+            ⚙️
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-extrabold text-slate-800 tracking-tight">Emergency Protocol & Transfer Optimizer Rules</h3>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-indigo-100 text-indigo-800 uppercase tracking-wide">Dynamic Tuner</span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">
+              Tune emergency shortage thresholds, batch dispatch sizes, donor pairing algorithms, and autonomous routing.
+            </p>
+          </div>
+        </div>
+
+        <button id="btnToggleRulesPanel" type="button" class="text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-300 hover:bg-slate-100 text-slate-700 flex items-center gap-1.5 transition cursor-pointer self-start md:self-auto">
+          <i data-lucide="sliders" class="h-3.5 w-3.5 text-indigo-600"></i>
+          <span id="rulesToggleText">Collapse Rules</span>
+        </button>
+      </div>
+
+      <div id="rulesPanelBody" class="p-4 sm:p-5 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          
+          <!-- Rule 1: Emergency Stock Trigger Threshold -->
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="ruleThresholdSlider" class="text-xs font-bold text-slate-800 flex items-center gap-1">
+                <span>Emergency Threshold (T<sub class="text-[9px]">emerg</sub>)</span>
+              </label>
+              <span id="ruleThresholdDisplay" class="px-2 py-0.5 rounded bg-rose-50 text-rose-700 font-mono font-bold text-xs border border-rose-200">
+                20 Cylinders
+              </span>
+            </div>
+            <input 
+              id="ruleThresholdSlider" 
+              type="range" 
+              min="10" 
+              max="40" 
+              step="5" 
+              value="20" 
+              class="w-full cursor-pointer h-2 bg-slate-200 rounded-lg accent-rose-600"
+            />
+            <div class="flex justify-between text-[10px] text-slate-400 font-mono">
+              <span>10 cyl</span>
+              <span>20 cyl (Default)</span>
+              <span>40 cyl</span>
+            </div>
+            <p class="text-[11px] text-slate-500 leading-relaxed pt-1">
+              Triggers cross-hospital emergency code and immediate donor pairing when facility stock drops to or below this level.
+            </p>
+          </div>
+
+          <!-- Rule 2: Batch Transfer Size -->
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="ruleBatchSelect" class="text-xs font-bold text-slate-800">
+                Transfer Batch Quantity
+              </label>
+              <span id="ruleBatchDisplay" class="px-2 py-0.5 rounded bg-indigo-50 text-indigo-700 font-mono font-bold text-xs border border-indigo-200">
+                40 Units
+              </span>
+            </div>
+            <select id="ruleBatchSelect" class="w-full text-xs p-2 rounded-lg border border-slate-300 font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="30">30 Cylinders (Rapid Light Dispatch)</option>
+              <option value="40" selected>40 Cylinders (Standard Regional Protocol)</option>
+              <option value="50">50 Cylinders (High-Capacity Van)</option>
+              <option value="60">60 Cylinders (Major Cryo Relocation)</option>
+            </select>
+            <p class="text-[11px] text-slate-500 leading-relaxed pt-1">
+              Number of oxygen cylinders loaded onto dispatch ambulance per emergency transfer mission.
+            </p>
+          </div>
+
+          <!-- Rule 3: Donor Allocation Strategy -->
+          <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-xs space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="ruleStrategySelect" class="text-xs font-bold text-slate-800">
+                Donor Pairing Algorithm
+              </label>
+              <span id="ruleStrategyDisplay" class="px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 font-mono font-bold text-[10px] border border-emerald-200">
+                MAX SURPLUS
+              </span>
+            </div>
+            <select id="ruleStrategySelect" class="w-full text-xs p-2 rounded-lg border border-slate-300 font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-emerald-500 outline-none">
+              <option value="HIGHEST_STOCK" selected>Highest Surplus Stock Hub (Max Reserve First)</option>
+              <option value="SHORTEST_DISTANCE">Shortest Ambulance Route (Fastest ETA First)</option>
+            </select>
+            <p class="text-[11px] text-slate-500 leading-relaxed pt-1">
+              Optimizes whether transfers prioritize facilities with the highest stock margin or the quickest travel distance.
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Action & Quick Stress Testing Buttons -->
+        <div class="p-3 bg-white rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3">
+          <div class="flex items-center flex-wrap gap-2 text-xs">
+            <span class="font-bold text-slate-700 text-xs">Live Stress Tests:</span>
+            <button id="btnQuickSurge" type="button" class="px-2.5 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-[11px] transition cursor-pointer flex items-center gap-1">
+              <span>⚡ Surge 2.5x</span>
+            </button>
+            <button id="btnQuickEmergency" type="button" class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-900 border border-rose-300 font-bold text-[11px] transition cursor-pointer flex items-center gap-1">
+              <span>🚨 Drop to 15 Cyl</span>
+            </button>
+            <button id="btnQuickDelivery" type="button" class="px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-[11px] transition cursor-pointer flex items-center gap-1">
+              <span>🚛 Tanker +50 Cyl</span>
+            </button>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <button id="btnResetRules" type="button" class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-600 hover:bg-slate-100 text-xs font-semibold transition cursor-pointer">
+              Reset Defaults
+            </button>
+            <button id="btnApplyRules" type="button" class="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-sm cursor-pointer flex items-center gap-1.5">
+              <i data-lucide="check-circle" class="h-3.5 w-3.5"></i>
+              <span>Apply & Re-Optimize</span>
+            </button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- 4. CRITICAL EMERGENCY PROTOCOL ALERT (Triggered when <= 20 cylinders) -->

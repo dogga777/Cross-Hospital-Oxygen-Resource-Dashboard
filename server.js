@@ -11,7 +11,7 @@ const { registerHospitalCylinders } = require('./src/cylinders/manager');
 const simulator = require('./src/simulator/stream');
 const { predictDistrictShortages } = require('./src/ml/predictor');
 const { validateDistrictModels, validateHospitalPredictor } = require('./src/ml/validator');
-const { generateRebalancePlan } = require('./src/optimizer/rebalance');
+const { generateRebalancePlan, getOptimizerRules, setOptimizerRules } = require('./src/optimizer/rebalance');
 const { enrichRecommendationsWithGemini, getAiClient } = require('./src/ai/gemini');
 const { generateCsv, generatePdf, generateHospitalsCsv } = require('./src/export/export');
 
@@ -139,6 +139,30 @@ app.get('/api/recommendations', async (req, res) => {
     const enrichedRecs = await enrichRecommendationsWithGemini(rawPlan.recommendations);
     latestRebalancePlan = { ...rawPlan, recommendations: enrichedRecs };
     res.json(latestRebalancePlan);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Emergency & Transfer Rules API
+app.get('/api/optimizer/rules', (req, res) => {
+  res.json(getOptimizerRules());
+});
+
+app.post('/api/optimizer/rules', async (req, res) => {
+  try {
+    const updated = setOptimizerRules(req.body);
+    const rawPlan = await generateRebalancePlan();
+    const enrichedRecs = await enrichRecommendationsWithGemini(rawPlan.recommendations);
+    latestRebalancePlan = { ...rawPlan, recommendations: enrichedRecs };
+
+    broadcastWs({
+      type: 'RULES_UPDATED',
+      rules: updated,
+      rebalancePlan: latestRebalancePlan
+    });
+
+    res.json({ success: true, rules: updated, plan: latestRebalancePlan });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -17,7 +17,12 @@ let state = {
   loggedInHospitalId: 'HOSP-01', // Default logged-in hospital: Hospital A
   currentUser: null,
   authToken: null,
-  notifications: []
+  notifications: [],
+  optimizerRules: {
+    emergencyThreshold: 20,
+    batchQuantity: 40,
+    pairingStrategy: 'HIGHEST_STOCK'
+  }
 };
 
 // District 04 Hospital Mapping
@@ -185,7 +190,9 @@ async function init() {
   initMap();
   setupEventListeners();
   setupAuthEventListeners();
+  setupOptimizerRulesEventListeners();
   updateQuickScanChips();
+  await loadOptimizerRules();
   await loadInitialData();
   await loadNotifications();
   setupWebSocket();
@@ -255,6 +262,19 @@ function setupWebSocket() {
         state.hospitalWithMostCylinders = data.rebalancePlan.hospitalWithMostCylinders || null;
         renderAll();
         updateMapData();
+      } else if (data.type === 'RULES_UPDATED') {
+        if (data.rules) {
+          state.optimizerRules = data.rules;
+          syncRulesUI(data.rules);
+        }
+        if (data.rebalancePlan) {
+          state.recommendations = data.rebalancePlan.recommendations || [];
+          state.predictions = data.rebalancePlan.predictions || [];
+          state.hospitalWithMostCylinders = data.rebalancePlan.hospitalWithMostCylinders || null;
+        }
+        renderAll();
+        updateMapData();
+        showToast(`⚙️ Optimizer rules updated across network (Threshold: ${data.rules?.emergencyThreshold || 20} cyl)`, 'info');
       } else if (data.type === 'NOTIFICATION_RECEIVED') {
         loadNotifications();
         showToast(`🚨 URGENT NOTIFICATION: Shortage detected at ${data.notification.fromHospitalName}!`, 'error');
@@ -292,29 +312,65 @@ function renderAll() {
   renderTransferRecommendations();
 }
 
-// 4. Render Top 3 Metric KPI Cards (Matching image)
+// 4. Render Top 4 Clinical Metric KPI Cards
 function renderTopKPIs() {
   if (!state.predictions) return;
 
-  const totalCyl = state.predictions.reduce((acc, h) => acc + Math.round(h.currentStock), 0);
-  const totalEl = document.getElementById('topTotalCylinders');
-  if (totalEl) totalEl.textContent = totalCyl;
+  const threshold = state.optimizerRules?.emergencyThreshold ?? 20;
 
-  const atRiskCount = state.predictions.filter(h => h.currentStock <= 20 || (h.timeToShortageHours !== null && h.timeToShortageHours <= 6)).length;
+  // Card 1: Total District Oxygen Reserves
+  const totalCyl = Math.round(state.predictions.reduce((acc, h) => acc + (h.currentStock || 0), 0));
+  const totalEl = document.getElementById('topTotalCylinders');
+  if (totalEl) totalEl.textContent = totalCyl.toLocaleString();
+
+  const totalCap = (state.hospitals && state.hospitals.length > 0)
+    ? state.hospitals.reduce((acc, h) => acc + (h.capacity || 250), 0)
+    : Math.max(1200, totalCyl * 1.5);
+  const pct = Math.min(100, Math.max(0, Math.round((totalCyl / totalCap) * 100)));
+
+  const barEl = document.getElementById('topReservesBar');
+  if (barEl) {
+    barEl.style.width = `${pct}%`;
+    barEl.className = `h-full rounded-full transition-all duration-500 ${
+      pct < 30 ? 'bg-rose-500' : pct < 55 ? 'bg-amber-500' : 'bg-emerald-500'
+    }`;
+  }
+  const pctEl = document.getElementById('topReservesPercent');
+  if (pctEl) pctEl.textContent = `${pct}% of total capacity (${totalCyl}/${totalCap} cyl)`;
+
+  // Card 2: Shortage Risk Horizon
+  const atRiskCount = state.predictions.filter(h => h.currentStock <= threshold || (h.timeToShortageHours !== null && h.timeToShortageHours <= 6)).length;
   const atRiskEl = document.getElementById('topAtRiskCount');
   if (atRiskEl) atRiskEl.textContent = atRiskCount;
+  const badgeThresh = document.getElementById('topRuleThresholdBadge');
+  if (badgeThresh) badgeThresh.textContent = threshold;
 
-  const activeMoves = state.recommendations ? state.recommendations.length : 0;
+  // Card 3: Active Clinical Demand
+  const totalPatients = (state.hospitals && state.hospitals.length > 0)
+    ? state.hospitals.reduce((acc, h) => acc + (h.activePatientsOnO2 || Math.round((h.currentStock || 50) * 0.35)), 0)
+    : state.predictions.reduce((acc, h) => acc + Math.round((h.currentStock || 50) * 0.35), 0);
+  const patientsEl = document.getElementById('topTotalPatients');
+  if (patientsEl) patientsEl.textContent = totalPatients.toLocaleString();
+
+  const totalBurn = Math.abs(state.predictions.reduce((acc, h) => acc + (h.depletionRatePerHour || 0), 0));
+  const burnEl = document.getElementById('topTotalBurnRate');
+  if (burnEl) burnEl.textContent = totalBurn.toFixed(1);
+
+  // Card 4: Logistics Corridors
+  const activeMoves = (state.transferLogs && state.transferLogs.length > 0)
+    ? state.transferLogs.length
+    : (state.recommendations ? state.recommendations.length : 0);
   const movesEl = document.getElementById('topActiveTransfersCount');
   if (movesEl) movesEl.textContent = activeMoves;
 }
 
-// 5. Emergency Protocol Alert (Triggered when any hospital has <= 20 cylinders)
+// 5. Emergency Protocol Alert (Triggered when any hospital has <= emergencyThreshold)
 function renderEmergencyDispatchAlert() {
   const container = document.getElementById('emergencyDispatchSection');
   if (!container || !state.predictions) return;
 
-  const urgentHosp = state.predictions.find(h => h.currentStock <= 20);
+  const threshold = state.optimizerRules?.emergencyThreshold ?? 20;
+  const urgentHosp = state.predictions.find(h => h.currentStock <= threshold);
   const topRec = state.recommendations && state.recommendations.length > 0 ? state.recommendations[0] : null;
 
   if (urgentHosp && topRec) {
@@ -329,7 +385,7 @@ function renderEmergencyDispatchAlert() {
             <span class="p-2 bg-rose-600 rounded-lg text-white font-bold">!</span>
             <div>
               <h2 class="text-sm font-extrabold text-rose-900 flex items-center gap-2">
-                CRITICAL EMERGENCY: ${urgentInfo.shortName} (${urgentInfo.fullName}) has only ${Math.round(urgentHosp.currentStock)} Cylinders Left (&le; 20 Threshold)!
+                CRITICAL EMERGENCY: ${urgentInfo.shortName} (${urgentInfo.fullName}) has only ${Math.round(urgentHosp.currentStock)} Cylinders Left (&le; ${threshold} Threshold)!
               </h2>
               <p class="text-xs text-rose-700 mt-0.5">
                 Automatic Emergency Protocol Activated: Directly routing from <strong>${donorInfo.shortName} (${donorInfo.fullName})</strong> &mdash; holds the most cylinders (${Math.round(topRec.donorCurrentStock)} cyl).
@@ -385,6 +441,7 @@ function renderStockLevelsTable() {
   const tbody = document.getElementById('stockTableBody');
   if (!tbody || !state.predictions) return;
 
+  const threshold = state.optimizerRules?.emergencyThreshold ?? 20;
   const sorted = [...state.predictions].sort((a, b) => b.currentStock - a.currentStock);
   const highestId = sorted[0]?.hospitalId;
 
@@ -399,9 +456,9 @@ function renderStockLevelsTable() {
       info.area.toLowerCase().includes(term);
 
     let matchesFilter = true;
-    if (filter === 'critical') matchesFilter = h.currentStock <= 20;
+    if (filter === 'critical') matchesFilter = h.currentStock <= threshold;
     else if (filter === 'at_risk') matchesFilter = h.timeToShortageHours !== null && h.timeToShortageHours <= 6.0;
-    else if (filter === 'stable') matchesFilter = h.currentStock > 20 && (h.timeToShortageHours === null || h.timeToShortageHours > 6.0);
+    else if (filter === 'stable') matchesFilter = h.currentStock > threshold && (h.timeToShortageHours === null || h.timeToShortageHours > 6.0);
 
     return matchesSearch && matchesFilter;
   });
@@ -417,11 +474,11 @@ function renderStockLevelsTable() {
   tbody.innerHTML = filteredHospitals.map(h => {
     const info = getHosp(h.hospitalId);
     const isHighest = h.hospitalId === highestId;
-    const isUnder20 = h.currentStock <= 20;
+    const isUnderThreshold = h.currentStock <= threshold;
     const isCurrentLoggedIn = h.hospitalId === state.loggedInHospitalId;
 
     let dotHtml = '';
-    if (isUnder20) {
+    if (isUnderThreshold) {
       dotHtml = `<span class="h-2 w-2 rounded-full bg-rose-600 animate-pulse shrink-0"></span>`;
     } else if (h.timeToShortageHours !== null && h.timeToShortageHours <= 12.0) {
       dotHtml = `<span class="h-2 w-2 rounded-full bg-amber-500 shrink-0"></span>`;
@@ -432,8 +489,8 @@ function renderStockLevelsTable() {
     const burnRateHtml = `<span class="text-rose-600 font-semibold">-${Math.abs(h.depletionRatePerHour)}/hr</span>`;
 
     let timeHtml = '';
-    if (isUnder20) {
-      timeHtml = `<span class="text-rose-600 font-extrabold animate-pulse">&le; 20 cyl (CRITICAL)</span>`;
+    if (isUnderThreshold) {
+      timeHtml = `<span class="text-rose-600 font-extrabold animate-pulse">&le; ${threshold} cyl (CRITICAL)</span>`;
     } else if (h.timeToShortageHours !== null && h.timeToShortageHours <= 4.0) {
       timeHtml = `<span class="text-rose-600 font-bold">${h.timeToShortageHours.toFixed(1)} hrs</span>`;
     } else if (h.timeToShortageHours !== null) {
@@ -443,6 +500,8 @@ function renderStockLevelsTable() {
     }
 
     const rowHighlight = isCurrentLoggedIn ? 'bg-indigo-50/40 border-l-4 border-indigo-600' : 'hover:bg-slate-50';
+
+    const testDropQty = Math.max(5, threshold - 5);
 
     return `
       <tr class="${rowHighlight} transition cursor-pointer" onclick="selectHospitalOnMap('${h.hospitalId}')">
@@ -471,8 +530,8 @@ function renderStockLevelsTable() {
         </td>
 
         <td class="py-3.5 px-5 text-right space-x-1.5 whitespace-nowrap" onclick="event.stopPropagation()">
-          <button onclick="setHospitalStock('${h.hospitalId}', 12)" class="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200 transition" title="Simulate dropping to 12 cylinders">
-            Set 12 cyl (&le;20)
+          <button onclick="setHospitalStock('${h.hospitalId}', ${testDropQty})" class="px-2 py-1 rounded bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold border border-rose-200 transition" title="Simulate dropping to ${testDropQty} cylinders">
+            Set ${testDropQty} cyl (&le;${threshold})
           </button>
           <button onclick="deliverStock('${h.hospitalId}', 40)" class="px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-medium border border-slate-200 transition" title="Add 40 cylinders">
             +40 cyl
@@ -833,13 +892,14 @@ function initMap() {
 function updateMapData() {
   if (!state.map || !state.predictions) return;
 
+  const threshold = state.optimizerRules?.emergencyThreshold ?? 20;
   const highest = [...state.predictions].sort((a, b) => b.currentStock - a.currentStock)[0]?.hospitalId;
 
   state.predictions.forEach(p => {
     const marker = state.mapMarkers[p.hospitalId];
     if (marker) {
       let color = '#10b981';
-      if (p.currentStock <= 20) color = '#dc2626';
+      if (p.currentStock <= threshold) color = '#dc2626';
       else if (p.timeToShortageHours !== null && p.timeToShortageHours <= 6) color = '#f59e0b';
       else if (p.hospitalId === highest) color = '#059669';
 
@@ -916,6 +976,7 @@ async function loadAuditHistory() {
     const res = await fetch('/api/transfers/history');
     state.transferLogs = await res.json();
     renderHistoryTable();
+    renderTopKPIs();
   } catch (err) {
     console.error('Failed to load audit history:', err);
   }
@@ -1095,12 +1156,14 @@ function setupEventListeners() {
   const btnSimDemand = document.getElementById('btnSimulateDemand');
   if (btnSimDemand) {
     btnSimDemand.addEventListener('click', async () => {
+      const thresh = state.optimizerRules?.emergencyThreshold ?? 20;
+      const targetStock = Math.max(5, thresh - 5);
       await fetch('/api/simulation/set-stock', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hospitalId: 'HOSP-01', stock: 15 })
+        body: JSON.stringify({ hospitalId: 'HOSP-01', stock: targetStock })
       });
-      showToast('🚨 Demand simulated! Hospital A dropped to 15 cylinders (<= 20). Emergency rule triggered!', 'error');
+      showToast(`🚨 Demand simulated! Hospital A dropped to ${targetStock} cylinders (<= ${thresh}). Emergency rule triggered!`, 'error');
       await loadInitialData();
     });
   }
@@ -1119,6 +1182,240 @@ function setupEventListeners() {
         );
       } else {
         showToast('All district facilities are currently balanced.', 'info');
+      }
+    });
+  }
+}
+
+// ==========================================
+// Emergency Protocol & Transfer Rules Tuning
+// ==========================================
+
+async function loadOptimizerRules() {
+  try {
+    const res = await fetch('/api/optimizer/rules');
+    if (res.ok) {
+      const rules = await res.json();
+      state.optimizerRules = rules;
+      syncRulesUI(rules);
+    }
+  } catch (err) {
+    console.error('Failed to load optimizer rules:', err);
+  }
+}
+
+function syncRulesUI(rules) {
+  if (!rules) return;
+  const slider = document.getElementById('ruleThresholdSlider');
+  const threshDisplay = document.getElementById('ruleThresholdDisplay');
+  const badgeThresh = document.getElementById('topRuleThresholdBadge');
+  const batchSelect = document.getElementById('ruleBatchSelect');
+  const batchDisplay = document.getElementById('ruleBatchDisplay');
+  const stratSelect = document.getElementById('ruleStrategySelect');
+  const stratDisplay = document.getElementById('ruleStrategyDisplay');
+
+  if (slider && rules.emergencyThreshold !== undefined) {
+    slider.value = rules.emergencyThreshold;
+  }
+  if (threshDisplay && rules.emergencyThreshold !== undefined) {
+    threshDisplay.textContent = `${rules.emergencyThreshold} Cylinders`;
+  }
+  if (badgeThresh && rules.emergencyThreshold !== undefined) {
+    badgeThresh.textContent = rules.emergencyThreshold;
+  }
+  if (batchSelect && rules.batchQuantity !== undefined) {
+    batchSelect.value = rules.batchQuantity;
+  }
+  if (batchDisplay && rules.batchQuantity !== undefined) {
+    batchDisplay.textContent = `${rules.batchQuantity} Units`;
+  }
+  if (stratSelect && rules.pairingStrategy) {
+    stratSelect.value = rules.pairingStrategy;
+  }
+  if (stratDisplay && rules.pairingStrategy) {
+    stratDisplay.textContent = rules.pairingStrategy === 'HIGHEST_STOCK' ? 'MAX SURPLUS' : 'MIN DISTANCE';
+  }
+}
+
+function setupOptimizerRulesEventListeners() {
+  const slider = document.getElementById('ruleThresholdSlider');
+  const threshDisplay = document.getElementById('ruleThresholdDisplay');
+  const badgeThresh = document.getElementById('topRuleThresholdBadge');
+  const batchSelect = document.getElementById('ruleBatchSelect');
+  const batchDisplay = document.getElementById('ruleBatchDisplay');
+  const stratSelect = document.getElementById('ruleStrategySelect');
+  const stratDisplay = document.getElementById('ruleStrategyDisplay');
+  const btnToggle = document.getElementById('btnToggleRulesPanel');
+  const rulesBody = document.getElementById('rulesPanelBody');
+  const toggleText = document.getElementById('rulesToggleText');
+  const btnApply = document.getElementById('btnApplyRules');
+  const btnReset = document.getElementById('btnResetRules');
+
+  // Collapse / Expand toggle
+  if (btnToggle && rulesBody) {
+    btnToggle.addEventListener('click', () => {
+      const isHidden = rulesBody.classList.toggle('hidden');
+      if (toggleText) {
+        toggleText.textContent = isHidden ? 'Expand Rules' : 'Collapse Rules';
+      }
+    });
+  }
+
+  // Slider change
+  if (slider) {
+    slider.addEventListener('input', (e) => {
+      const val = e.target.value;
+      if (threshDisplay) threshDisplay.textContent = `${val} Cylinders`;
+      if (badgeThresh) badgeThresh.textContent = val;
+    });
+  }
+
+  // Batch select change
+  if (batchSelect) {
+    batchSelect.addEventListener('change', (e) => {
+      if (batchDisplay) batchDisplay.textContent = `${e.target.value} Units`;
+    });
+  }
+
+  // Strategy select change
+  if (stratSelect) {
+    stratSelect.addEventListener('change', (e) => {
+      if (stratDisplay) {
+        stratDisplay.textContent = e.target.value === 'HIGHEST_STOCK' ? 'MAX SURPLUS' : 'MIN DISTANCE';
+      }
+    });
+  }
+
+  // Apply button
+  if (btnApply) {
+    btnApply.addEventListener('click', async () => {
+      const threshold = Number(slider?.value || 20);
+      const batch = Number(batchSelect?.value || 40);
+      const strategy = stratSelect?.value || 'HIGHEST_STOCK';
+
+      btnApply.disabled = true;
+      btnApply.innerHTML = '<span class="animate-spin inline-block mr-1">⌛</span> Applying...';
+
+      try {
+        const res = await fetch('/api/optimizer/rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emergencyThreshold: threshold,
+            batchQuantity: batch,
+            pairingStrategy: strategy
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          state.optimizerRules = data.rules;
+          syncRulesUI(data.rules);
+          if (data.plan) {
+            state.recommendations = data.plan.recommendations || [];
+            state.predictions = data.plan.predictions || [];
+            state.hospitalWithMostCylinders = data.plan.hospitalWithMostCylinders || null;
+          }
+          renderAll();
+          updateMapData();
+          showToast(`✓ Emergency Rules applied! Threshold: &le;${threshold} cyl | Batch: ${batch} | Strategy: ${strategy}`, 'success');
+        } else {
+          showToast(data.error || 'Failed to update rules', 'error');
+        }
+      } catch (err) {
+        showToast('Error applying rules: ' + err.message, 'error');
+      } finally {
+        btnApply.disabled = false;
+        btnApply.innerHTML = '<i data-lucide="check-circle" class="h-3.5 w-3.5"></i><span>Apply & Re-Optimize</span>';
+        if (window.lucide) lucide.createIcons();
+      }
+    });
+  }
+
+  // Reset button
+  if (btnReset) {
+    btnReset.addEventListener('click', async () => {
+      try {
+        const res = await fetch('/api/optimizer/rules', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            emergencyThreshold: 20,
+            batchQuantity: 40,
+            pairingStrategy: 'HIGHEST_STOCK'
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          state.optimizerRules = data.rules;
+          syncRulesUI(data.rules);
+          if (data.plan) {
+            state.recommendations = data.plan.recommendations || [];
+            state.predictions = data.plan.predictions || [];
+            state.hospitalWithMostCylinders = data.plan.hospitalWithMostCylinders || null;
+          }
+          renderAll();
+          updateMapData();
+          showToast('✓ Optimizer rules reset to standard clinical defaults (20 cyl / 40 batch).', 'info');
+        }
+      } catch (err) {
+        showToast('Error resetting rules: ' + err.message, 'error');
+      }
+    });
+  }
+
+  // Stress tests
+  const btnSurge = document.getElementById('btnQuickSurge');
+  if (btnSurge) {
+    btnSurge.addEventListener('click', async () => {
+      const targetId = state.selectedHospitalId || state.loggedInHospitalId || 'HOSP-01';
+      try {
+        await fetch('/api/simulation/surge', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hospitalId: targetId, multiplier: 2.5 })
+        });
+        showToast(`⚡ Surge 2.5x applied to ${getHosp(targetId).shortName}! Demand accelerating.`, 'alert');
+        await loadInitialData();
+      } catch (err) {
+        showToast('Surge simulation failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  const btnEmergency = document.getElementById('btnQuickEmergency');
+  if (btnEmergency) {
+    btnEmergency.addEventListener('click', async () => {
+      const targetId = state.selectedHospitalId || state.loggedInHospitalId || 'HOSP-01';
+      const thresh = state.optimizerRules?.emergencyThreshold ?? 20;
+      const targetStock = Math.max(5, thresh - 5);
+      try {
+        await fetch('/api/simulation/set-stock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hospitalId: targetId, stock: targetStock })
+        });
+        showToast(`🚨 Simulated acute shortage at ${getHosp(targetId).shortName} (${targetStock} cyl &le; ${thresh})! Emergency protocol active.`, 'error');
+        await loadInitialData();
+      } catch (err) {
+        showToast('Emergency simulation failed: ' + err.message, 'error');
+      }
+    });
+  }
+
+  const btnDelivery = document.getElementById('btnQuickDelivery');
+  if (btnDelivery) {
+    btnDelivery.addEventListener('click', async () => {
+      const targetId = state.selectedHospitalId || state.loggedInHospitalId || 'HOSP-01';
+      try {
+        await fetch('/api/simulation/delivery', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hospitalId: targetId, quantity: 50 })
+        });
+        showToast(`🚛 Tanker delivered +50 cylinders to ${getHosp(targetId).shortName}! Reserves replenished.`, 'success');
+        await loadInitialData();
+      } catch (err) {
+        showToast('Delivery simulation failed: ' + err.message, 'error');
       }
     });
   }
