@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: cross-hospital-rebalance
+    name: cross-hospital-oxygen-resource-dashboard
     runtime: node
     plan: free
     region: oregon

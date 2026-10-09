@@ -5,7 +5,8 @@
 *District-wide AI Logistics Dispatch Engine for Medical Oxygen*
 
 **Track:** Gemini · MongoDB · Render  
-**Repository Location:** `C:\Users\chand\.gemini\antigravity\scratch\cross-hospital-rebalance`  
+**GitHub Repository:** `https://github.com/dogga777/Cross-Hospital-Oxygen-Resource-Dashboard`  
+**Live Production URL (Render):** [https://cross-hospital-oxygen-resource-dashboard.onrender.com/](https://cross-hospital-oxygen-resource-dashboard.onrender.com/)  
 **Live Local URL:** [http://localhost:3000](http://localhost:3000)  
 
 ---
