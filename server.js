@@ -13,7 +13,7 @@ const { predictDistrictShortages } = require('./src/ml/predictor');
 const { validateDistrictModels, validateHospitalPredictor } = require('./src/ml/validator');
 const { generateRebalancePlan, getOptimizerRules, setOptimizerRules } = require('./src/optimizer/rebalance');
 const { enrichRecommendationsWithGemini, getAiClient } = require('./src/ai/gemini');
-const { generateCsv, generatePdf, generateHospitalsCsv } = require('./src/export/export');
+const { generateCsv, generatePdf, generateHospitalsCsv, generateBarcodeMovementsCsv, generateCylindersCsv } = require('./src/export/export');
 
 const app = express();
 const server = http.createServer(app);
@@ -237,6 +237,42 @@ app.get('/api/transfers/export/csv', async (req, res) => {
     const csvContent = generateCsv(logs);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="oxygen_transfer_manifest_history.csv"');
+    res.send(csvContent);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Export Dedicated Barcode-Level Cylinder Movements as CSV (From Hospital to Hospital)
+app.get('/api/transfers/export/barcode-csv', async (req, res) => {
+  try {
+    const db = getDb();
+    const logs = await db.collection('transfer_logs')
+      .find()
+      .sort({ timestamp: -1 })
+      .toArray();
+    const csvContent = generateBarcodeMovementsCsv(logs);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="oxygen_cylinder_barcode_movements.csv"');
+    res.send(csvContent);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Alias for cylinder movements CSV
+app.get('/api/cylinders/export/movements-csv', (req, res) => {
+  res.redirect('/api/transfers/export/barcode-csv');
+});
+
+// Export Complete Cylinder Fleet Barcodes as CSV
+app.get('/api/cylinders/export/csv', async (req, res) => {
+  try {
+    const db = getDb();
+    const cylinders = await db.collection('cylinders').find().toArray();
+    const csvContent = generateCylindersCsv(cylinders);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="hospital_cylinders_barcode_inventory.csv"');
     res.send(csvContent);
   } catch (err) {
     res.status(500).json({ error: err.message });

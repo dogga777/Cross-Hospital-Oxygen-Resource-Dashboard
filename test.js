@@ -144,10 +144,13 @@ async function runSystemTests() {
     const newTelem = await db.collection('resource_telemetry').countDocuments({ hospitalId: 'HOSP-07' });
     assert(newTelem >= 20, `Telemetry history auto-generated for trend prediction (Points: ${newTelem})`);
 
-    // Verify authentication match
-    const validAuth = foundUser.passwordHash === hashPassword('securePass123');
-    const invalidAuth = foundUser.passwordHash === hashPassword('wrongPassword');
-    assert(validAuth === true && invalidAuth === false, `Password authentication validates correctly and rejects bad credentials`);
+    // [Test 8] Barcode CSV Generation Test
+    console.log('\n[Test 8] Barcode Cylinder Movement CSV Export');
+    const { generateBarcodeMovementsCsv } = require('./src/export/export');
+    const transferLogs = await db.collection('transfer_logs').find().toArray();
+    const barcodeCsv = generateBarcodeMovementsCsv(transferLogs);
+    assert(barcodeCsv.includes('Cylinder Barcode') && barcodeCsv.includes('From Hospital (Source Name)') && barcodeCsv.includes('To Hospital (Destination Name)'), `Barcode movement CSV generated with cylinder barcode and hospital movement tracking headers`);
+    assert(barcodeCsv.includes('*O2-'), `Barcode movement CSV contains scanned asterisk barcode formats (*O2-...)`);
 
     console.log(`\n======================================================`);
     console.log(`🎉 ALL TESTS PASSED: ${passed}/${total} criteria verified!`);

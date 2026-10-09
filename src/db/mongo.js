@@ -95,6 +95,21 @@ class InMemoryCollection {
     return { matchedCount: 1, modifiedCount: 1, acknowledged: true };
   }
 
+  async updateMany(query = {}, update = {}) {
+    const matchedDocs = this.docs.filter(d => this._matchesQuery(d, query));
+    for (const doc of matchedDocs) {
+      if (update.$set) {
+        Object.assign(doc, update.$set);
+      }
+      if (update.$inc) {
+        for (const [k, v] of Object.entries(update.$inc)) {
+          doc[k] = (doc[k] || 0) + v;
+        }
+      }
+    }
+    return { matchedCount: matchedDocs.length, modifiedCount: matchedDocs.length, acknowledged: true };
+  }
+
   async countDocuments(query = {}) {
     return this.docs.filter(d => this._matchesQuery(d, query)).length;
   }

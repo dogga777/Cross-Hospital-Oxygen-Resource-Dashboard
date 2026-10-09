@@ -117,9 +117,14 @@
             <span>Google Maps</span>
           </a>
 
-          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-teal-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition">
+          <a href="/api/transfers/export/barcode-csv" download="oxygen_cylinder_barcode_movements.csv" class="px-2.5 py-1.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition" title="Download CSV of oxygen cylinder barcodes moving from hospital to hospital">
+            <i data-lucide="barcode" class="h-3.5 w-3.5"></i>
+            <span>Barcode Movement .CSV</span>
+          </a>
+
+          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-teal-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition" title="Download Manifest Summary CSV">
             <i data-lucide="download" class="h-3.5 w-3.5"></i>
-            <span>CSV</span>
+            <span>Summary CSV</span>
           </a>
 
           <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-emerald-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition">
@@ -518,7 +523,11 @@
           </p>
         </div>
 
-        <div class="flex items-center space-x-2 text-xs">
+        <div class="flex items-center space-x-2 text-xs flex-wrap gap-2">
+          <a href="/api/transfers/export/barcode-csv" download="oxygen_cylinder_barcode_movements.csv" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center gap-1.5 transition shadow-xs cursor-pointer" title="Download complete CSV of oxygen cylinder barcodes moving from hospital to hospital">
+            <i data-lucide="download" class="h-3.5 w-3.5"></i>
+            <span>Export Barcode Movements (.CSV)</span>
+          </a>
           <span class="text-slate-500">Scanning for:</span>
           <span id="scannerActiveHospitalLabel" class="font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-md border border-indigo-200">
             Hospital A (Metro General)
@@ -788,9 +797,12 @@
           </p>
         </div>
 
-        <div class="flex items-center space-x-2">
-          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center gap-1.5 transition">
-            <i data-lucide="download" class="h-3.5 w-3.5"></i> Download .CSV
+        <div class="flex items-center space-x-2 flex-wrap gap-2">
+          <a href="/api/transfers/export/barcode-csv" download="oxygen_cylinder_barcode_movements.csv" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm" title="Download CSV tracking individual oxygen cylinder barcodes moving from hospital to hospital">
+            <i data-lucide="barcode" class="h-3.5 w-3.5"></i> Barcode Movements .CSV
+          </a>
+          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-semibold flex items-center gap-1.5 transition" title="Download Manifest Summary CSV">
+            <i data-lucide="download" class="h-3.5 w-3.5"></i> Summary .CSV
           </a>
           <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
             <i data-lucide="file-text" class="h-3.5 w-3.5"></i> Download .PDF

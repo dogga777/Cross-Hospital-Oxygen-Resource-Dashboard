@@ -43,7 +43,7 @@ function fetchRaw(path) {
     http.get(`${BASE_URL}${path}`, (res) => {
       let data = '';
       res.on('data', chunk => data += chunk);
-      res.on('end', () => resolve({ status: res.statusCode, length: data.length }));
+      res.on('end', () => resolve({ status: res.statusCode, length: data.length, data }));
     }).on('error', reject);
   });
 }
@@ -138,6 +138,11 @@ async function runLiveTests() {
     // 8b. CSV & PDF Export checks
     const csvRes = await fetchRaw('/api/transfers/export/csv');
     assert(csvRes.status === 200 && csvRes.length > 100, 'GET /api/transfers/export/csv returns valid CSV download');
+    const barcodeCsvRes = await fetchRaw('/api/transfers/export/barcode-csv');
+    assert(barcodeCsvRes.status === 200 && barcodeCsvRes.length > 100, 'GET /api/transfers/export/barcode-csv returns valid Barcode CSV download');
+    assert(barcodeCsvRes.data.includes('Cylinder Barcode') && barcodeCsvRes.data.includes('From Hospital (Source Name)') && barcodeCsvRes.data.includes('To Hospital (Destination Name)'), 'Barcode CSV contains cylinder barcode and source/destination hospitals tracking');
+    const cylCsvRes = await fetchRaw('/api/cylinders/export/csv');
+    assert(cylCsvRes.status === 200 && cylCsvRes.length > 100, 'GET /api/cylinders/export/csv returns valid cylinder fleet CSV');
     const pdfRes = await fetchRaw('/api/transfers/export/pdf');
     assert(pdfRes.status === 200 && pdfRes.length > 500, 'GET /api/transfers/export/pdf returns valid PDF document');
 

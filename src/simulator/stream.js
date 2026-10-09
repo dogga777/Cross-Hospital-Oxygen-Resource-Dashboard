@@ -125,9 +125,60 @@ class HospitalStreamSimulator {
     const dispatch = getRandomDispatchDetails();
     const transit = getTransitInfo(donorId, recipientId);
 
+    // Reallocate barcoded oxygen cylinders from donor to recipient in database
+    const donorCylinders = await db.collection('cylinders')
+      .find({ hospitalId: donorId })
+      .limit(actualQty)
+      .toArray();
+
+    const manifestId = `MAN-${Date.now().toString().slice(-6)}`;
+    let cylinderBarcodes = [];
+
+    if (donorCylinders.length > 0) {
+      const movedIds = donorCylinders.map(c => c._id);
+      cylinderBarcodes = donorCylinders.map(c => c.serialNumber);
+
+      // Reassign cylinders to recipient hospital
+      if (typeof db.collection('cylinders').updateMany === 'function') {
+        await db.collection('cylinders').updateMany(
+          { _id: { $in: movedIds } },
+          {
+            $set: {
+              hospitalId: recipientId,
+              hospitalName: recipient.name,
+              lastTransferredFrom: donor.name,
+              lastTransferredTo: recipient.name,
+              lastManifestId: manifestId,
+              lastTransferredAt: Date.now()
+            }
+          }
+        );
+      } else {
+        for (const cid of movedIds) {
+          await db.collection('cylinders').updateOne(
+            { _id: cid },
+            {
+              $set: {
+                hospitalId: recipientId,
+                hospitalName: recipient.name,
+                lastTransferredFrom: donor.name,
+                lastTransferredTo: recipient.name,
+                lastManifestId: manifestId,
+                lastTransferredAt: Date.now()
+              }
+            }
+          );
+        }
+      }
+    } else {
+      // Generate realistic serials if donor docs hadn't been individually initialized
+      const cleanPrefix = (donor.name || 'GEN').replace(/[^A-Za-z]/g, '').slice(0, 4).toUpperCase() || 'GEN';
+      cylinderBarcodes = Array.from({ length: actualQty }, (_, i) => `O2-${cleanPrefix}-${String(i + 1).padStart(3, '0')}`);
+    }
+
     // Record complete transfer manifest
     const transferDoc = {
-      manifestId: `MAN-${Date.now().toString().slice(-6)}`,
+      manifestId,
       donorId,
       donorName: donor.name,
       donorAddress: donor.location?.address || 'District Facility',
@@ -137,6 +188,7 @@ class HospitalStreamSimulator {
       recipientAddress: recipient.location?.address || 'District Facility',
       recipientContact: recipient.location?.phone || '+1 (555) 000-0000',
       quantity: actualQty,
+      cylinderBarcodes,
       resourceType: 'Oxygen Cylinders (Type-D 40L)',
       ambulanceNumber: dispatch.ambulanceNumber,
       deliveryDriver: dispatch.deliveryDriver,
@@ -150,7 +202,31 @@ class HospitalStreamSimulator {
     };
 
     await db.collection('transfer_logs').insertOne(transferDoc);
-    console.log(`[Simulator] ✓ Rebalance transfer executed: ${actualQty} cylinders from ${donor.name} -> ${recipient.name} (Vehicle: ${dispatch.ambulanceNumber}, Driver: ${dispatch.deliveryDriver})`);
+
+    // Also record detailed individual cylinder movement tracking records
+    const movementRecords = cylinderBarcodes.map((serial, idx) => ({
+      movementId: `MOV-${manifestId}-${String(idx + 1).padStart(3, '0')}`,
+      manifestId,
+      barcode: `*${serial}*`,
+      serialNumber: serial,
+      fromHospitalId: donorId,
+      fromHospitalName: donor.name,
+      toHospitalId: recipientId,
+      toHospitalName: recipient.name,
+      timestamp: transferDoc.timestamp,
+      ambulanceNumber: dispatch.ambulanceNumber,
+      deliveryDriver: dispatch.deliveryDriver,
+      driverPhone: dispatch.driverPhone,
+      transitDistanceKm: transit.distanceKm,
+      transitMinutes: transit.transitMinutes,
+      status: 'DELIVERED'
+    }));
+
+    if (movementRecords.length > 0) {
+      await db.collection('cylinder_movements').insertMany(movementRecords);
+    }
+
+    console.log(`[Simulator] ✓ Rebalance transfer executed: ${actualQty} cylinders from ${donor.name} -> ${recipient.name} (Vehicle: ${dispatch.ambulanceNumber}, Driver: ${dispatch.deliveryDriver}, Barcodes: ${cylinderBarcodes.length})`);
 
     // Trigger immediate step so clients see the rebalance right away
     await this.step();

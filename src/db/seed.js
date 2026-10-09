@@ -307,6 +307,7 @@ async function seedDatabaseIfEmpty() {
         manifestId: 'MAN-2026-0418',
         timestamp: now - (90 * 60 * 1000), // 1.5 hours ago
         quantity: 35,
+        cylinderBarcodes: Array.from({ length: 35 }, (_, i) => `O2-JUDE-${String(i + 1).padStart(3, '0')}`),
         resourceType: 'Oxygen Cylinders (Type-D 40L)',
         donorId: 'HOSP-02',
         donorName: 'St. Jude Medical Center',
@@ -329,6 +330,7 @@ async function seedDatabaseIfEmpty() {
         manifestId: 'MAN-2026-0419',
         timestamp: now - (45 * 60 * 1000), // 45 mins ago
         quantity: 50,
+        cylinderBarcodes: Array.from({ length: 50 }, (_, i) => `O2-HGH-${String(i + 1).padStart(3, '0')}`),
         resourceType: 'Oxygen Cylinders (Type-D 40L)',
         donorId: 'HOSP-06',
         donorName: 'Highland Specialty Institute',

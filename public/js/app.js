@@ -1269,8 +1269,12 @@ function renderHistoryTable() {
           <span class="font-mono font-bold text-slate-700">${timeStr}</span>
           <span class="text-[10px] text-slate-400 block">${log.manifestId || 'MAN-LOG'}</span>
         </td>
-        <td class="py-2.5 px-3 font-mono font-bold text-emerald-700">
-          +${log.quantity} cyl
+        <td class="py-2.5 px-3">
+          <div class="font-mono font-bold text-emerald-700">+${log.quantity} cyl</div>
+          <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-mono bg-indigo-50 text-indigo-700 border border-indigo-200 mt-0.5" title="Moving ${log.quantity} barcoded oxygen cylinders">
+            <i data-lucide="barcode" class="h-2.5 w-2.5"></i>
+            <span>${log.quantity} Barcodes</span>
+          </span>
         </td>
         <td class="py-2.5 px-3">
           <span class="font-bold text-slate-800">${donorInfo.shortName}</span>
@@ -1298,6 +1302,7 @@ function renderHistoryTable() {
       </tr>
     `;
   }).join('');
+  if (window.lucide) lucide.createIcons();
 }
 
 // Action Handlers
