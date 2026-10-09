@@ -132,6 +132,16 @@
             <span>PDF</span>
           </a>
 
+          <button id="btnOpenAiAlertModal" type="button" class="px-2.5 py-1.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer" title="Customize Gemini AI clinical reasoning prompt & alert notifications">
+            <i data-lucide="sparkles" class="h-3.5 w-3.5 text-purple-600"></i>
+            <span>AI & Alerts</span>
+          </button>
+
+          <button id="btnOpenExportOptionsModal" type="button" class="px-2.5 py-1.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer" title="Configure custom fields for CSV & PDF exports">
+            <i data-lucide="sliders-horizontal" class="h-3.5 w-3.5 text-amber-600"></i>
+            <span>Custom Export Fields</span>
+          </button>
+
         </div>
 
         <!-- Live Clock (Matching screenshot) -->
@@ -807,6 +817,9 @@
           <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-sm">
             <i data-lucide="file-text" class="h-3.5 w-3.5"></i> Download .PDF
           </a>
+          <button id="btnOpenExportOptionsModalManifest" type="button" class="px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-xs font-bold flex items-center gap-1.5 transition shadow-sm cursor-pointer" title="Customize fields included in CSV manifests and PDF reports">
+            <i data-lucide="sliders-horizontal" class="h-3.5 w-3.5 text-amber-600"></i> Custom Export Fields
+          </button>
         </div>
       </div>
 
@@ -1045,6 +1058,323 @@
             </button>
           </p>
         </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- AI CLINICAL REASONING & ALERT NOTIFICATIONS SETTINGS MODAL       -->
+  <!-- ============================================================== -->
+  <div id="aiAlertModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto hidden">
+    <div class="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Header Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-purple-950 text-white p-5 sm:p-6 relative">
+        <button id="btnCloseAiAlertModal" type="button" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer" title="Close">
+          <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+
+        <div class="flex items-center space-x-3">
+          <div class="h-10 w-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-inner shrink-0">
+            <i data-lucide="sparkles" class="h-5 w-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold tracking-tight">AI Clinical Reasoning & Alert Notifications</h3>
+            <p class="text-xs text-purple-200 mt-0.5">Customize Gemini AI clinical justification prompt templates and emergency alert thresholds</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="flex border-b border-slate-200 bg-slate-100 text-xs font-bold">
+        <button type="button" id="tabBtnAiPrompt" class="flex-1 py-3 px-4 text-purple-700 border-b-2 border-purple-600 bg-white font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer">
+          <i data-lucide="sparkles" class="h-4 w-4"></i>
+          <span>Gemini Clinical Prompt</span>
+        </button>
+        <button type="button" id="tabBtnAlertConfig" class="flex-1 py-3 px-4 text-slate-600 hover:text-slate-900 border-b-2 border-transparent font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer">
+          <i data-lucide="bell-ring" class="h-4 w-4"></i>
+          <span>Alert Notifications</span>
+        </button>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6">
+        
+        <!-- Tab 1: Gemini AI Prompt Customization -->
+        <div id="aiPromptTabPane" class="space-y-4">
+          
+          <!-- Preset Selector -->
+          <div>
+            <label class="block font-semibold text-slate-800 text-xs mb-1">Clinical Reasoning Directive Preset</label>
+            <select id="aiPresetSelect" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none font-semibold text-slate-700">
+              <option value="STANDARD_CRISP">Standard Crisp Justification (Default: "Move X units from...")</option>
+              <option value="PATHOPHYSIOLOGICAL">Pathophysiological Hypoxia & SpO2 Mitigation</option>
+              <option value="HIGH_ACUITY_ICU">High-Acuity ICU & Ventilator Life-Support Priority</option>
+              <option value="CUSTOM">Custom Clinical Directives & Template</option>
+            </select>
+            <p id="aiPresetDesc" class="text-[11px] text-purple-700 mt-1 font-medium bg-purple-50 p-2 rounded border border-purple-100">
+              Exact one-line clinical justification with donor surplus runway and recipient depletion horizon.
+            </p>
+          </div>
+
+          <!-- Persona Input -->
+          <div>
+            <label class="block font-semibold text-slate-700 text-xs mb-1">AI System Persona</label>
+            <input type="text" id="aiPersonaInput" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 font-medium" placeholder="You are an emergency medical logistics dispatch commander.">
+          </div>
+
+          <!-- Clinical Directive -->
+          <div>
+            <label class="block font-semibold text-slate-700 text-xs mb-1">Clinical Directive Guidelines</label>
+            <input type="text" id="aiDirectiveInput" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-purple-500 outline-none text-slate-800 font-medium" placeholder="Write EXACTLY ONE concise, high-impact clinical justification sentence.">
+          </div>
+
+          <!-- Prompt Template -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-semibold text-slate-700 text-xs">Prompt Template Structure</label>
+              <span class="text-[10px] text-slate-500">Click tag to insert:</span>
+            </div>
+            
+            <!-- Quick Tag Pills -->
+            <div class="flex flex-wrap gap-1 mb-2">
+              <button type="button" class="btnAiTag px-2 py-0.5 rounded bg-slate-100 hover:bg-purple-100 text-purple-700 border border-slate-200 text-[10px] font-mono font-semibold" data-tag="{transferQuantity}">+ {transferQuantity}</button>
+              <button type="button" class="btnAiTag px-2 py-0.5 rounded bg-slate-100 hover:bg-purple-100 text-purple-700 border border-slate-200 text-[10px] font-mono font-semibold" data-tag="{donorName}">+ {donorName}</button>
+              <button type="button" class="btnAiTag px-2 py-0.5 rounded bg-slate-100 hover:bg-purple-100 text-purple-700 border border-slate-200 text-[10px] font-mono font-semibold" data-tag="{recipientName}">+ {recipientName}</button>
+              <button type="button" class="btnAiTag px-2 py-0.5 rounded bg-slate-100 hover:bg-purple-100 text-purple-700 border border-slate-200 text-[10px] font-mono font-semibold" data-tag="{donorSurplusHours}">+ {donorSurplusHours}</button>
+              <button type="button" class="btnAiTag px-2 py-0.5 rounded bg-slate-100 hover:bg-purple-100 text-purple-700 border border-slate-200 text-[10px] font-mono font-semibold" data-tag="{recipientDepletionHours}">+ {recipientDepletionHours}</button>
+              <button type="button" class="btnAiTag px-2 py-0.5 rounded bg-slate-100 hover:bg-purple-100 text-purple-700 border border-slate-200 text-[10px] font-mono font-semibold" data-tag="{transitMinutes}">+ {transitMinutes}</button>
+            </div>
+
+            <textarea id="aiTemplateInput" rows="2" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-purple-500 outline-none text-slate-800" placeholder="Move {transferQuantity} units from {donorName} to {recipientName} — {donorName} has {donorSurplusHours}hrs surplus, {recipientName} depletes in {recipientDepletionHours}hrs"></textarea>
+          </div>
+
+          <!-- Temperature Slider -->
+          <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-200 text-xs">
+            <div>
+              <span class="font-semibold text-slate-700">Clinical Reasoning Temperature: </span>
+              <span id="aiTempValue" class="font-mono font-bold text-purple-700">0.2</span>
+              <p class="text-[10px] text-slate-500">Lower temperature ensures strict factual medical compliance.</p>
+            </div>
+            <input type="range" id="aiTemperatureInput" min="0.0" max="1.0" step="0.05" value="0.2" class="w-32 cursor-pointer accent-purple-600">
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="flex items-center gap-2 pt-2 border-t border-slate-100">
+            <button type="button" id="btnTestAiPrompt" class="flex-1 py-2 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer">
+              <i data-lucide="play" class="h-3.5 w-3.5"></i>
+              <span>Test Prompt Live</span>
+            </button>
+            <button type="button" id="btnSaveAiPrompt" class="flex-1 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer">
+              <i data-lucide="check" class="h-3.5 w-3.5"></i>
+              <span>Save AI Directives</span>
+            </button>
+          </div>
+
+          <!-- Test Preview Box -->
+          <div id="aiTestPreviewBox" class="hidden p-3 rounded-lg bg-slate-900 text-white text-xs space-y-1.5 font-mono">
+            <div class="flex items-center justify-between text-[10px] text-purple-300">
+              <span class="font-bold flex items-center gap-1"><i data-lucide="bot" class="h-3 w-3"></i> Gemini AI Clinical Output</span>
+              <span id="aiTestModelBadge" class="bg-purple-900 px-1.5 py-0.5 rounded text-purple-200">gemini-3.8-flash</span>
+            </div>
+            <p id="aiTestOutputText" class="text-slate-100 font-sans text-xs italic bg-slate-800/80 p-2.5 rounded border border-slate-700">
+              Generating clinical justification...
+            </p>
+          </div>
+
+        </div>
+
+        <!-- Tab 2: Alert Notifications Customization -->
+        <div id="alertConfigTabPane" class="space-y-4 hidden">
+          
+          <!-- Audio Chimes Section -->
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2.5">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                  <i data-lucide="volume-2" class="h-4 w-4 text-emerald-600"></i>
+                  Clinical Audio Chimes
+                </label>
+                <p class="text-[11px] text-slate-500">Play real-time synthesized audio chime whenever emergency shortage occurs</p>
+              </div>
+              <input type="checkbox" id="alertSoundToggle" checked class="h-4 w-4 text-emerald-600 rounded cursor-pointer accent-emerald-600">
+            </div>
+
+            <div class="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+              <select id="alertSoundFreqSelect" class="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-semibold text-slate-700 bg-white">
+                <option value="TWO_TONE">Two-Tone Melodic Clinical Chime (880Hz / 660Hz)</option>
+                <option value="HIGH_PITCH">Emergency High-Pitch Warning (1040Hz)</option>
+                <option value="SOFT_CHIME">Soft Hospital Ping (520Hz)</option>
+              </select>
+              <button type="button" id="btnTestAudioChime" class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1 shadow-sm transition cursor-pointer shrink-0">
+                <i data-lucide="volume-2" class="h-3.5 w-3.5"></i>
+                <span>Test Chime</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Browser Push Notifications Section -->
+          <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+            <div class="flex items-center justify-between">
+              <div>
+                <label class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                  <i data-lucide="bell" class="h-4 w-4 text-indigo-600"></i>
+                  Desktop Browser Push Notifications
+                </label>
+                <p class="text-[11px] text-slate-500">Deliver emergency alerts to system desktop even when dashboard is minimized</p>
+              </div>
+              <input type="checkbox" id="alertBrowserNotifToggle" class="h-4 w-4 text-indigo-600 rounded cursor-pointer accent-indigo-600">
+            </div>
+            <button type="button" id="btnRequestBrowserPermission" class="text-xs text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer">
+              Request browser notification permission &rarr;
+            </button>
+          </div>
+
+          <!-- Threshold Settings -->
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-bold text-slate-700 text-xs mb-1">Critical Shortage Threshold (Cylinders) *</label>
+              <input type="number" id="alertEmergencyThresholdInput" min="5" max="80" value="20" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold text-rose-600 focus:ring-2 focus:ring-rose-500 outline-none">
+              <span class="text-[10px] text-slate-500">Triggers Immediate Dispatch Protocol</span>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 text-xs mb-1">Warning Advisory Threshold (Cylinders) *</label>
+              <input type="number" id="alertWarningThresholdInput" min="15" max="150" value="35" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-bold text-amber-600 focus:ring-2 focus:ring-amber-500 outline-none">
+              <span class="text-[10px] text-slate-500">Flags early replenishment advisory</span>
+            </div>
+          </div>
+
+          <!-- Custom Alert Message Template -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label class="block font-semibold text-slate-700 text-xs">Emergency Alert Message Template</label>
+              <span class="text-[10px] text-slate-500">Interpolated on shortage detection</span>
+            </div>
+            <textarea id="alertMessageTemplateInput" rows="2" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-rose-500 outline-none text-slate-800" placeholder="🚨 CRITICAL SHORTAGE: {hospitalName} (Reg: {hospitalReg}) has reached {currentStock} cylinders (≤ {emergencyThreshold} threshold)! Urgent dispatch requested from {donorName}."></textarea>
+          </div>
+
+          <!-- Dispatch Recipient Command Group -->
+          <div>
+            <label class="block font-semibold text-slate-700 text-xs mb-1">Emergency Dispatch Broadcast Group</label>
+            <input type="text" id="alertRecipientsInput" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-slate-500 outline-none text-slate-800 font-medium" placeholder="District 04 Logistics Dispatch, Trauma Network Command">
+          </div>
+
+          <!-- Save Button -->
+          <div class="pt-2 border-t border-slate-100">
+            <button type="button" id="btnSaveAlertConfig" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md flex items-center justify-center gap-1.5 transition cursor-pointer">
+              <i data-lucide="check" class="h-4 w-4"></i>
+              <span>Save Alert Notification Settings</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================================== -->
+  <!-- CUSTOM EXPORT FIELDS & MANIFEST OPTIONS MODAL                  -->
+  <!-- ============================================================== -->
+  <div id="exportOptionsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto hidden">
+    <div class="relative w-full max-w-xl bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Header Banner -->
+      <div class="bg-gradient-to-r from-slate-900 via-teal-950 to-slate-900 text-white p-5 sm:p-6 relative">
+        <button id="btnCloseExportModal" type="button" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer" title="Close">
+          <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+
+        <div class="flex items-center space-x-3">
+          <div class="h-10 w-10 rounded-xl bg-teal-600 text-white flex items-center justify-center font-bold text-lg shadow-inner shrink-0">
+            <i data-lucide="sliders-horizontal" class="h-5 w-5"></i>
+          </div>
+          <div>
+            <h3 class="text-base font-extrabold tracking-tight">Custom Export Fields & Manifest Options</h3>
+            <p class="text-xs text-teal-200 mt-0.5">Select custom fields and metadata for downloadable CSV manifests and PDF reports</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Modal Body -->
+      <div class="p-6 space-y-4">
+        
+        <div>
+          <label class="block font-bold text-slate-800 text-xs mb-2">Select Custom Logistics & Clinical Fields to Include:</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-xs text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-200">
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldRegNo" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Hospital Reg Numbers (MOH ID)</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldPriority" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Clinical Triage Urgency (CODE RED)</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldSeal" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Batch Tamper Seal Number</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldPurity" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Medical Oxygen Purity (99.5% USP)</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldPressure" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Operating Pressure (PSI)</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldOfficers" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Authorizing Dispatcher & CMO</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldCorridor" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Transit Logistics Corridor</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer">
+              <input type="checkbox" id="expFieldAi" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Gemini AI Clinical Rationale</span>
+            </label>
+            <label class="flex items-center space-x-2 cursor-pointer sm:col-span-2">
+              <input type="checkbox" id="expFieldBarcodes" checked class="h-4 w-4 text-teal-600 rounded accent-teal-600">
+              <span class="font-medium">Full Cylinder Barcode Ranges (*O2-...)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Custom Field Value Overrides -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+          <div>
+            <label class="block font-semibold text-slate-700 text-xs mb-1">Authorizing Coordinator Name</label>
+            <input type="text" id="expCoordinatorInput" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-teal-500 outline-none" placeholder="Dr. Sarah Chen / Dispatch Command">
+          </div>
+          <div>
+            <label class="block font-semibold text-slate-700 text-xs mb-1">Tamper Seal Prefix</label>
+            <input type="text" id="expSealPrefixInput" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono focus:ring-2 focus:ring-teal-500 outline-none uppercase" placeholder="SEAL-2026">
+          </div>
+        </div>
+
+        <!-- Instant Download Buttons -->
+        <div class="pt-3 border-t border-slate-100 space-y-2">
+          <label class="block font-bold text-slate-800 text-xs">Download Report with Configured Fields:</label>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button type="button" id="btnExportCustomBarcodeCsv" class="py-2.5 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <i data-lucide="barcode" class="h-3.5 w-3.5"></i>
+              <span>Barcode CSV</span>
+            </button>
+            <button type="button" id="btnExportCustomManifestCsv" class="py-2.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <i data-lucide="download" class="h-3.5 w-3.5"></i>
+              <span>Manifest CSV</span>
+            </button>
+            <button type="button" id="btnExportCustomPdf" class="py-2.5 px-3 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition cursor-pointer">
+              <i data-lucide="file-text" class="h-3.5 w-3.5"></i>
+              <span>Official PDF</span>
+            </button>
+          </div>
+        </div>
+
       </div>
 
     </div>

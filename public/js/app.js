@@ -196,11 +196,14 @@ async function init() {
   setupEventListeners();
   setupAuthEventListeners();
   setupOptimizerRulesEventListeners();
+  setupAiAlertAndExportEventListeners();
   updateQuickScanChips();
   await loadOptimizerRules();
   await loadSimulationStatus();
   await loadInitialData();
   await loadNotifications();
+  await loadAiConfig();
+  await loadAlertConfig();
   setupWebSocket();
   await loadAuditHistory();
   initAuth();
@@ -286,7 +289,24 @@ function setupWebSocket() {
         syncSimulationUI();
       } else if (data.type === 'NOTIFICATION_RECEIVED') {
         loadNotifications();
-        showToast(`🚨 URGENT NOTIFICATION: Shortage detected at ${data.notification.fromHospitalName}!`, 'error');
+        if (state.alertConfig?.soundAlerts !== false) {
+          playClinicalAlertChime(state.alertConfig?.alertSoundFrequency || 'TWO_TONE');
+        }
+        sendDesktopNotification('🚨 Critical Shortage Alert', data.notification?.message || `Emergency shortage detected at ${data.notification?.fromHospitalName}!`);
+        showToast(`🚨 URGENT NOTIFICATION: Shortage detected at ${data.notification?.fromHospitalName}!`, 'error');
+      } else if (data.type === 'TEST_ALERT_CHIME') {
+        playClinicalAlertChime(data.soundFrequency || 'TWO_TONE');
+        showToast('🔊 Audio chime test played successfully', 'info');
+      } else if (data.type === 'AI_CONFIG_UPDATED') {
+        state.aiConfig = data.config;
+        if (data.rebalancePlan) {
+          state.recommendations = data.rebalancePlan.recommendations || [];
+          renderAll();
+        }
+        showToast('✨ Gemini AI clinical prompt settings updated across network!', 'success');
+      } else if (data.type === 'ALERTS_CONFIG_UPDATED') {
+        state.alertConfig = data.config;
+        showToast(`🚨 Alert notification settings updated (Threshold: ${data.config?.emergencyThreshold || 20} cyl)`, 'info');
       } else if (data.type === 'NOTIFICATION_RESOLVED') {
         loadNotifications();
         showToast(`✓ Notification resolved: Oxygen cylinders dispatched!`, 'success');
@@ -2292,6 +2312,472 @@ function setupAuthEventListeners() {
 
   const linkGoToLogin = document.getElementById('linkGoToLogin');
   if (linkGoToLogin) linkGoToLogin.addEventListener('click', () => switchAuthTab('login'));
+}
+
+// ==========================================
+// Clinical Audio Alert Synthesizer (Web Audio API)
+// ==========================================
+function playClinicalAlertChime(frequencyMode = 'TWO_TONE') {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+
+    if (frequencyMode === 'HIGH_PITCH') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(1040, ctx.currentTime);
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.45);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.45);
+    } else if (frequencyMode === 'SOFT_CHIME') {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      gain.gain.setValueAtTime(0.18, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.6);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.6);
+    } else {
+      // Default: TWO_TONE melodic clinical chime (A5 880Hz -> E5 659.25Hz)
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const gain1 = ctx.createGain();
+      osc1.type = 'triangle';
+      osc1.frequency.setValueAtTime(880, now);
+      gain1.gain.setValueAtTime(0.18, now);
+      gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.28);
+      osc1.connect(gain1);
+      gain1.connect(ctx.destination);
+      osc1.start(now);
+      osc1.stop(now + 0.28);
+
+      const osc2 = ctx.createOscillator();
+      const gain2 = ctx.createGain();
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(659.25, now + 0.14);
+      gain2.gain.setValueAtTime(0.20, now + 0.14);
+      gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc2.connect(gain2);
+      gain2.connect(ctx.destination);
+      osc2.start(now + 0.14);
+      osc2.stop(now + 0.6);
+    }
+  } catch (err) {
+    console.warn('Audio chime playback error:', err);
+  }
+}
+
+function sendDesktopNotification(title, body) {
+  if (state.alertConfig?.browserNotifications && window.Notification && Notification.permission === 'granted') {
+    try {
+      new Notification(title, {
+        body,
+        icon: 'https://cdn-icons-png.flaticon.com/512/883/883360.png'
+      });
+    } catch (e) {
+      // ignore
+    }
+  }
+}
+
+// ==========================================
+// AI Clinical Reasoning & Alert Settings UI
+// ==========================================
+async function loadAiConfig() {
+  try {
+    const res = await fetch('/api/ai/config');
+    const data = await res.json();
+    state.aiConfig = data.config;
+    state.aiPresets = data.presets;
+    renderAiModalUI();
+  } catch (err) {
+    console.warn('Failed to load AI config:', err);
+  }
+}
+
+async function loadAlertConfig() {
+  try {
+    const res = await fetch('/api/alerts/config');
+    const data = await res.json();
+    state.alertConfig = data;
+    renderAlertModalUI();
+  } catch (err) {
+    console.warn('Failed to load alert config:', err);
+  }
+}
+
+function renderAiModalUI() {
+  const select = document.getElementById('aiPresetSelect');
+  const descEl = document.getElementById('aiPresetDesc');
+  const personaEl = document.getElementById('aiPersonaInput');
+  const directiveEl = document.getElementById('aiDirectiveInput');
+  const templateEl = document.getElementById('aiTemplateInput');
+  const tempInput = document.getElementById('aiTemperatureInput');
+  const tempVal = document.getElementById('aiTempValue');
+
+  if (!state.aiConfig || !select) return;
+
+  select.value = state.aiConfig.activePreset || 'STANDARD_CRISP';
+  const activePreset = state.aiPresets?.[select.value] || {};
+
+  if (descEl) descEl.textContent = activePreset.description || '';
+  if (personaEl) personaEl.value = state.aiConfig.customPersona || activePreset.persona || '';
+  if (directiveEl) directiveEl.value = state.aiConfig.customDirective || activePreset.directive || '';
+  if (templateEl) templateEl.value = state.aiConfig.customTemplate || activePreset.template || '';
+  if (tempInput) tempInput.value = state.aiConfig.temperature ?? 0.2;
+  if (tempVal) tempVal.textContent = state.aiConfig.temperature ?? 0.2;
+}
+
+function renderAlertModalUI() {
+  const soundToggle = document.getElementById('alertSoundToggle');
+  const soundFreq = document.getElementById('alertSoundFreqSelect');
+  const notifToggle = document.getElementById('alertBrowserNotifToggle');
+  const emInput = document.getElementById('alertEmergencyThresholdInput');
+  const warnInput = document.getElementById('alertWarningThresholdInput');
+  const msgInput = document.getElementById('alertMessageTemplateInput');
+  const recipInput = document.getElementById('alertRecipientsInput');
+
+  if (!state.alertConfig) return;
+
+  if (soundToggle) soundToggle.checked = state.alertConfig.soundAlerts !== false;
+  if (soundFreq) soundFreq.value = state.alertConfig.alertSoundFrequency || 'TWO_TONE';
+  if (notifToggle) notifToggle.checked = Boolean(state.alertConfig.browserNotifications);
+  if (emInput) emInput.value = state.alertConfig.emergencyThreshold || 20;
+  if (warnInput) warnInput.value = state.alertConfig.warningThreshold || 35;
+  if (msgInput) msgInput.value = state.alertConfig.alertMessageTemplate || '';
+  if (recipInput) recipInput.value = state.alertConfig.customDispatchRecipients || '';
+}
+
+function openAiAlertModal(activeTab = 'prompt') {
+  const modal = document.getElementById('aiAlertModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  switchAiAlertTab(activeTab);
+  loadAiConfig();
+  loadAlertConfig();
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeAiAlertModal() {
+  const modal = document.getElementById('aiAlertModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function switchAiAlertTab(tab) {
+  const tabPromptBtn = document.getElementById('tabBtnAiPrompt');
+  const tabAlertBtn = document.getElementById('tabBtnAlertConfig');
+  const panePrompt = document.getElementById('aiPromptTabPane');
+  const paneAlert = document.getElementById('alertConfigTabPane');
+
+  if (tab === 'prompt') {
+    tabPromptBtn?.classList.add('text-purple-700', 'border-purple-600', 'bg-white');
+    tabPromptBtn?.classList.remove('text-slate-600', 'border-transparent');
+    tabAlertBtn?.classList.remove('text-purple-700', 'border-purple-600', 'bg-white');
+    tabAlertBtn?.classList.add('text-slate-600', 'border-transparent');
+    panePrompt?.classList.remove('hidden');
+    paneAlert?.classList.add('hidden');
+  } else {
+    tabAlertBtn?.classList.add('text-purple-700', 'border-purple-600', 'bg-white');
+    tabAlertBtn?.classList.remove('text-slate-600', 'border-transparent');
+    tabPromptBtn?.classList.remove('text-purple-700', 'border-purple-600', 'bg-white');
+    tabPromptBtn?.classList.add('text-slate-600', 'border-transparent');
+    paneAlert?.classList.remove('hidden');
+    panePrompt?.classList.add('hidden');
+  }
+}
+
+// ==========================================
+// Custom Fields Export Options UI
+// ==========================================
+function openExportOptionsModal() {
+  const modal = document.getElementById('exportOptionsModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+
+  const coordInput = document.getElementById('expCoordinatorInput');
+  if (coordInput && !coordInput.value) {
+    coordInput.value = state.currentUser?.contactPerson || state.hospitals.find(h => h.id === state.loggedInHospitalId)?.location?.dispatchContact || 'Dr. Sarah Chen / Dispatch Command';
+  }
+  if (window.lucide) lucide.createIcons();
+}
+
+function closeExportOptionsModal() {
+  const modal = document.getElementById('exportOptionsModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function buildExportQueryParams() {
+  const coordinator = document.getElementById('expCoordinatorInput')?.value?.trim() || '';
+  const sealPrefix = document.getElementById('expSealPrefixInput')?.value?.trim() || 'SEAL-2026';
+  const includeRegNo = document.getElementById('expFieldRegNo')?.checked ?? true;
+  const includePriority = document.getElementById('expFieldPriority')?.checked ?? true;
+  const includeSeal = document.getElementById('expFieldSeal')?.checked ?? true;
+  const includePurity = document.getElementById('expFieldPurity')?.checked ?? true;
+  const includePressure = document.getElementById('expFieldPressure')?.checked ?? true;
+  const includeOfficers = document.getElementById('expFieldOfficers')?.checked ?? true;
+  const includeCorridor = document.getElementById('expFieldCorridor')?.checked ?? true;
+  const includeAi = document.getElementById('expFieldAi')?.checked ?? true;
+  const includeBarcodes = document.getElementById('expFieldBarcodes')?.checked ?? true;
+
+  const params = new URLSearchParams();
+  if (coordinator) params.set('coordinator', coordinator);
+  if (sealPrefix) params.set('sealPrefix', sealPrefix);
+  params.set('includeRegNo', includeRegNo);
+  params.set('includePriority', includePriority);
+  params.set('includeSeal', includeSeal);
+  params.set('includePurity', includePurity);
+  params.set('includePressure', includePressure);
+  params.set('includeOfficers', includeOfficers);
+  params.set('includeCorridor', includeCorridor);
+  params.set('includeAi', includeAi);
+  params.set('includeBarcodes', includeBarcodes);
+
+  return params.toString();
+}
+
+function downloadCustomExport(type) {
+  const qs = buildExportQueryParams();
+  let url = '';
+  let filename = '';
+
+  if (type === 'barcode-csv') {
+    url = `/api/transfers/export/barcode-csv?${qs}`;
+    filename = 'oxygen_cylinder_barcode_movements.csv';
+  } else if (type === 'manifest-csv') {
+    url = `/api/transfers/export/csv?${qs}`;
+    filename = 'oxygen_transfer_manifest_history.csv';
+  } else if (type === 'pdf') {
+    url = `/api/transfers/export/pdf?${qs}`;
+    window.open(url, '_blank');
+    closeExportOptionsModal();
+    return;
+  }
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  showToast(`Downloading custom ${filename}...`, 'success');
+  closeExportOptionsModal();
+}
+
+function setupAiAlertAndExportEventListeners() {
+  // Modal triggers
+  const btnOpenAiAlert = document.getElementById('btnOpenAiAlertModal');
+  if (btnOpenAiAlert) btnOpenAiAlert.addEventListener('click', () => openAiAlertModal('prompt'));
+
+  const btnCloseAiAlert = document.getElementById('btnCloseAiAlertModal');
+  if (btnCloseAiAlert) btnCloseAiAlert.addEventListener('click', closeAiAlertModal);
+
+  const btnOpenExport = document.getElementById('btnOpenExportOptionsModal');
+  if (btnOpenExport) btnOpenExport.addEventListener('click', openExportOptionsModal);
+
+  const btnOpenExportManifest = document.getElementById('btnOpenExportOptionsModalManifest');
+  if (btnOpenExportManifest) btnOpenExportManifest.addEventListener('click', openExportOptionsModal);
+
+  const btnCloseExport = document.getElementById('btnCloseExportModal');
+  if (btnCloseExport) btnCloseExport.addEventListener('click', closeExportOptionsModal);
+
+  // Tabs
+  document.getElementById('tabBtnAiPrompt')?.addEventListener('click', () => switchAiAlertTab('prompt'));
+  document.getElementById('tabBtnAlertConfig')?.addEventListener('click', () => switchAiAlertTab('alert'));
+
+  // Preset switch
+  document.getElementById('aiPresetSelect')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    const preset = state.aiPresets?.[val] || {};
+    const descEl = document.getElementById('aiPresetDesc');
+    if (descEl) descEl.textContent = preset.description || '';
+    if (val !== 'CUSTOM') {
+      const personaEl = document.getElementById('aiPersonaInput');
+      const directiveEl = document.getElementById('aiDirectiveInput');
+      const templateEl = document.getElementById('aiTemplateInput');
+      if (personaEl) personaEl.value = preset.persona || '';
+      if (directiveEl) directiveEl.value = preset.directive || '';
+      if (templateEl) templateEl.value = preset.template || '';
+    }
+  });
+
+  // Temperature slider
+  const tempSlider = document.getElementById('aiTemperatureInput');
+  const tempVal = document.getElementById('aiTempValue');
+  if (tempSlider && tempVal) {
+    tempSlider.addEventListener('input', () => {
+      tempVal.textContent = tempSlider.value;
+    });
+  }
+
+  // Tag pills
+  document.querySelectorAll('.btnAiTag').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tag = btn.getAttribute('data-tag');
+      const textarea = document.getElementById('aiTemplateInput');
+      if (textarea && tag) {
+        textarea.value += ' ' + tag;
+        textarea.focus();
+      }
+    });
+  });
+
+  // Test prompt live
+  document.getElementById('btnTestAiPrompt')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnTestAiPrompt');
+    const previewBox = document.getElementById('aiTestPreviewBox');
+    const outputText = document.getElementById('aiTestOutputText');
+    const modelBadge = document.getElementById('aiTestModelBadge');
+
+    try {
+      if (btn) btn.disabled = true;
+      if (outputText) outputText.textContent = 'Contacting Gemini AI model for clinical evaluation...';
+      if (previewBox) previewBox.classList.remove('hidden');
+
+      const preset = document.getElementById('aiPresetSelect')?.value || 'STANDARD_CRISP';
+      const persona = document.getElementById('aiPersonaInput')?.value || '';
+      const directive = document.getElementById('aiDirectiveInput')?.value || '';
+      const template = document.getElementById('aiTemplateInput')?.value || '';
+
+      const res = await fetch('/api/ai/test-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preset,
+          customPersona: persona,
+          customDirective: directive,
+          customTemplate: template
+        })
+      });
+      const data = await res.json();
+      if (outputText) outputText.textContent = `"${data.result?.justification || 'No justification returned'}"`;
+      if (modelBadge) modelBadge.textContent = data.result?.modelUsed || 'gemini-3.8-flash';
+    } catch (err) {
+      if (outputText) outputText.textContent = 'Error testing prompt: ' + err.message;
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  // Save AI directives
+  document.getElementById('btnSaveAiPrompt')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnSaveAiPrompt');
+    try {
+      if (btn) btn.disabled = true;
+      const preset = document.getElementById('aiPresetSelect')?.value || 'STANDARD_CRISP';
+      const persona = document.getElementById('aiPersonaInput')?.value || '';
+      const directive = document.getElementById('aiDirectiveInput')?.value || '';
+      const template = document.getElementById('aiTemplateInput')?.value || '';
+      const temperature = Number(document.getElementById('aiTemperatureInput')?.value) || 0.2;
+
+      const res = await fetch('/api/ai/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          activePreset: preset,
+          customPersona: persona,
+          customDirective: directive,
+          customTemplate: template,
+          temperature
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showToast('✓ Gemini AI clinical reasoning settings saved & active!', 'success');
+        closeAiAlertModal();
+        if (data.plan) {
+          state.recommendations = data.plan.recommendations || [];
+          renderAll();
+        }
+      }
+    } catch (err) {
+      showToast('Failed to save AI settings: ' + err.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  // Test Chime button
+  document.getElementById('btnTestAudioChime')?.addEventListener('click', () => {
+    const freq = document.getElementById('alertSoundFreqSelect')?.value || 'TWO_TONE';
+    playClinicalAlertChime(freq);
+    fetch('/api/alerts/test-chime', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soundFrequency: freq })
+    }).catch(() => {});
+  });
+
+  // Request browser notification permission
+  document.getElementById('btnRequestBrowserPermission')?.addEventListener('click', async () => {
+    if ('Notification' in window) {
+      const permission = await Notification.requestPermission();
+      if (permission === 'granted') {
+        showToast('✓ Desktop notifications enabled!', 'success');
+        const notifToggle = document.getElementById('alertBrowserNotifToggle');
+        if (notifToggle) notifToggle.checked = true;
+      } else {
+        showToast('Notification permission was denied or dismissed.', 'alert');
+      }
+    } else {
+      showToast('Notifications not supported by this browser.', 'alert');
+    }
+  });
+
+  // Save Alert Settings
+  document.getElementById('btnSaveAlertConfig')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnSaveAlertConfig');
+    try {
+      if (btn) btn.disabled = true;
+      const soundAlerts = document.getElementById('alertSoundToggle')?.checked ?? true;
+      const soundFreq = document.getElementById('alertSoundFreqSelect')?.value || 'TWO_TONE';
+      const browserNotifs = document.getElementById('alertBrowserNotifToggle')?.checked ?? false;
+      const emergencyThreshold = Number(document.getElementById('alertEmergencyThresholdInput')?.value) || 20;
+      const warningThreshold = Number(document.getElementById('alertWarningThresholdInput')?.value) || 35;
+      const template = document.getElementById('alertMessageTemplateInput')?.value || '';
+      const recipients = document.getElementById('alertRecipientsInput')?.value || '';
+
+      const res = await fetch('/api/alerts/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          soundAlerts,
+          alertSoundFrequency: soundFreq,
+          browserNotifications: browserNotifs,
+          emergencyThreshold,
+          warningThreshold,
+          alertMessageTemplate: template,
+          customDispatchRecipients: recipients
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        state.alertConfig = data.config;
+        showToast('✓ Alert notification protocols saved & active!', 'success');
+        closeAiAlertModal();
+        if (data.plan) {
+          state.recommendations = data.plan.recommendations || [];
+          renderAll();
+        }
+      }
+    } catch (err) {
+      showToast('Failed to save alert settings: ' + err.message, 'error');
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  // Custom Export Download Buttons
+  document.getElementById('btnExportCustomBarcodeCsv')?.addEventListener('click', () => downloadCustomExport('barcode-csv'));
+  document.getElementById('btnExportCustomManifestCsv')?.addEventListener('click', () => downloadCustomExport('manifest-csv'));
+  document.getElementById('btnExportCustomPdf')?.addEventListener('click', () => downloadCustomExport('pdf'));
 }
 
 document.addEventListener('DOMContentLoaded', init);

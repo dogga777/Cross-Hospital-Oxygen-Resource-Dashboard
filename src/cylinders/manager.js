@@ -133,8 +133,10 @@ async function processBarcodeScan(serialNumber, action = 'CONSUME', currentHospi
   let notificationCreated = null;
 
   const { getOptimizerRules } = require('../optimizer/rebalance');
+  const { getAlertConfig, formatAlertMessage } = require('../alerts/config');
   const rules = getOptimizerRules();
-  const emergencyThreshold = Number(rules?.emergencyThreshold) || 20;
+  const alertConfig = getAlertConfig();
+  const emergencyThreshold = Number(alertConfig?.emergencyThreshold) || Number(rules?.emergencyThreshold) || 20;
   const batchQuantity = Number(rules?.batchQuantity) || 40;
 
   if (updatedStock <= emergencyThreshold && stockChange < 0) {
@@ -144,18 +146,29 @@ async function processBarcodeScan(serialNumber, action = 'CONSUME', currentHospi
     const allHospitals = await hospCol.find().sort({ currentStock: -1 }).toArray();
     const donorHosp = allHospitals.find(h => h.id !== hospId) || allHospitals[0];
 
+    const alertMsg = formatAlertMessage(alertConfig.alertMessageTemplate, {
+      hospitalName: hospital.name,
+      hospitalReg: hospital.registrationNumber || 'MOH-REG-2026-XXXX',
+      currentStock: updatedStock,
+      emergencyThreshold,
+      donorName: donorHosp.name,
+      runwayHours: (updatedStock / Math.max(1, hospital.baselineBurnRate || 10)).toFixed(1)
+    });
+
     // Create an automatic cross-hospital shortage emergency notification
     const notifDoc = {
       id: `NOTIF-${Date.now()}`,
       fromHospitalId: hospId,
       fromHospitalName: hospital.name,
+      fromRegistrationNumber: hospital.registrationNumber || 'MOH-REG-2026-XXXX',
       toHospitalId: donorHosp.id,
       toHospitalName: donorHosp.name,
+      toRegistrationNumber: donorHosp.registrationNumber || 'MOH-REG-2026-XXXX',
       type: 'CRITICAL_SHORTAGE_DETECTED',
       urgency: `EMERGENCY (≤ ${emergencyThreshold} CYLINDERS)`,
       currentStockLeft: updatedStock,
       requestedQuantity: batchQuantity,
-      message: `🚨 CRITICAL ALERT: ${hospital.name} scanned a cylinder and oxygen reserve has dropped to ${updatedStock} cylinders (≤ ${emergencyThreshold} threshold)! Urgent dispatch requested from ${donorHosp.name}.`,
+      message: alertMsg,
       status: 'PENDING_APPROVAL',
       timestamp: Date.now()
     };

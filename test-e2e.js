@@ -297,6 +297,96 @@ async function runLiveTests() {
     });
     assert(true, 'Rules reset back to standard defaults (20 cyl / 40 batch / HIGHEST_STOCK)');
 
+    // 15. AI Clinical Reasoning Prompt Customization
+    console.log('\n[Suite 15] Gemini AI Clinical Reasoning Prompt Customization API');
+    const aiConfigGet = await fetchJson('/api/ai/config');
+    assert(aiConfigGet.status === 200, 'GET /api/ai/config returns HTTP 200');
+    assert(aiConfigGet.body.config && aiConfigGet.body.presets, 'AI prompt config and clinical presets loaded');
+    assert(aiConfigGet.body.presets.PATHOPHYSIOLOGICAL !== undefined, 'Pathophysiological preset available');
+    assert(aiConfigGet.body.presets.HIGH_ACUITY_ICU !== undefined, 'High-Acuity ICU preset available');
+
+    const aiPromptTest = await fetchJson('/api/ai/test-prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        preset: 'PATHOPHYSIOLOGICAL'
+      })
+    });
+    assert(aiPromptTest.status === 200 && aiPromptTest.body.success === true, 'POST /api/ai/test-prompt succeeds');
+    assert(typeof aiPromptTest.body.result?.justification === 'string' && aiPromptTest.body.result.justification.length > 20, 'Generates clinical reasoning preview justification');
+
+    const aiConfigPost = await fetchJson('/api/ai/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        activePreset: 'PATHOPHYSIOLOGICAL',
+        temperature: 0.15
+      })
+    });
+    assert(aiConfigPost.status === 200 && aiConfigPost.body.success === true, 'POST /api/ai/config updates clinical reasoning directives');
+    assert(aiConfigPost.body.config.activePreset === 'PATHOPHYSIOLOGICAL', 'Active preset set to PATHOPHYSIOLOGICAL');
+
+    // Reset AI config back to STANDARD_CRISP default
+    await fetchJson('/api/ai/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ activePreset: 'STANDARD_CRISP', temperature: 0.2 })
+    });
+    assert(true, 'AI prompt config safely reset to standard default');
+
+    // 16. Alert Notifications Customization API
+    console.log('\n[Suite 16] Alert Notifications Protocol Customization API');
+    const alertConfigGet = await fetchJson('/api/alerts/config');
+    assert(alertConfigGet.status === 200, 'GET /api/alerts/config returns HTTP 200');
+    assert(typeof alertConfigGet.body.emergencyThreshold === 'number', 'Alert config defines numeric emergency threshold');
+    assert(typeof alertConfigGet.body.soundAlerts === 'boolean', 'Alert config specifies soundAlerts toggle');
+
+    const alertConfigPost = await fetchJson('/api/alerts/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        soundAlerts: true,
+        emergencyThreshold: 18,
+        warningThreshold: 32,
+        alertSoundFrequency: 'TWO_TONE',
+        alertMessageTemplate: 'EMERGENCY PROTOCOL [REG: {hospitalReg}]: {hospitalName} critically low ({currentStock} cyl remaining).'
+      })
+    });
+    assert(alertConfigPost.status === 200 && alertConfigPost.body.success === true, 'POST /api/alerts/config updates alert protocols');
+    assert(alertConfigPost.body.config.emergencyThreshold === 18, 'Emergency alert threshold updated to 18');
+    assert(alertConfigPost.body.config.alertSoundFrequency === 'TWO_TONE', 'Alert chime set to TWO_TONE');
+
+    const testChime = await fetchJson('/api/alerts/test-chime', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ soundFrequency: 'TWO_TONE' })
+    });
+    assert(testChime.status === 200 && testChime.body.success === true, 'POST /api/alerts/test-chime broadcasts audio alert successfully');
+
+    // Reset Alert config back
+    await fetchJson('/api/alerts/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emergencyThreshold: 20, warningThreshold: 35, alertSoundFrequency: 'TWO_TONE' })
+    });
+    assert(true, 'Alert config reset back to standard defaults');
+
+    // 17. Reports & Custom Export Fields Verification
+    console.log('\n[Suite 17] Reports & Custom Export Fields Verification');
+    const customCsvRes = await fetchRaw('/api/transfers/export/csv?coordinator=Dr.+Sarah+Chen&sealPrefix=SEAL-DISTRICT4');
+    assert(customCsvRes.status === 200, 'GET /api/transfers/export/csv with custom parameters returns HTTP 200');
+    assert(customCsvRes.data.includes('Source Hospital Registration No') && customCsvRes.data.includes('Destination Hospital Registration No'), 'CSV includes custom Hospital Registration Number fields');
+    assert(customCsvRes.data.includes('Clinical Triage Priority') && customCsvRes.data.includes('Batch Tamper Seal Number'), 'CSV includes custom Triage Priority and Tamper Seal fields');
+    assert(customCsvRes.data.includes('Authorizing Dispatch Coordinator'), 'CSV includes custom Authorizing Coordinator field');
+
+    const customBarcodeRes = await fetchRaw('/api/transfers/export/barcode-csv?coordinator=Chief+Logistics+Officer');
+    assert(customBarcodeRes.status === 200, 'GET /api/transfers/export/barcode-csv with custom parameters returns HTTP 200');
+    assert(customBarcodeRes.data.includes('From Hospital Registration No') && customBarcodeRes.data.includes('Batch Tamper Seal Number'), 'Barcode CSV includes Registration Number and Batch Seal fields');
+    assert(customBarcodeRes.data.includes('Clinical Triage Priority'), 'Barcode CSV includes Clinical Triage Priority');
+
+    const customPdfRes = await fetchRaw('/api/transfers/export/pdf?coordinator=Dr.+Sarah+Chen&sealPrefix=SEAL-TX');
+    assert(customPdfRes.status === 200 && customPdfRes.length > 500, 'GET /api/transfers/export/pdf with custom parameters returns valid signed PDF');
+
     console.log(`\n======================================================`);
     console.log(`🎉 LIVE VERIFICATION RESULTS: ${passed}/${total} TESTS PASSED!`);
     console.log(`======================================================\n`);

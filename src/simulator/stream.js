@@ -176,20 +176,35 @@ class HospitalStreamSimulator {
       cylinderBarcodes = Array.from({ length: actualQty }, (_, i) => `O2-${cleanPrefix}-${String(i + 1).padStart(3, '0')}`);
     }
 
+    const donorRegNo = donor.registrationNumber || 'MOH-REG-2026-0000';
+    const recipientRegNo = recipient.registrationNumber || 'MOH-REG-2026-0000';
+    const sealNumber = `SEAL-2026-${(manifestId.replace(/[^0-9]/g, '') || String(Math.floor(1000 + Math.random() * 9000))).slice(-4)}`;
+    const clinicalPriority = (recipient.currentStock <= 20) ? 'CODE RED (EMERGENCY REBALANCE)' : 'CODE AMBER (HIGH PRIORITY)';
+    const coordinatorName = donor.location?.dispatchContact || 'District Logistics Command Desk';
+
     // Record complete transfer manifest
     const transferDoc = {
       manifestId,
       donorId,
       donorName: donor.name,
+      donorRegistrationNumber: donorRegNo,
       donorAddress: donor.location?.address || 'District Facility',
       donorContact: donor.location?.phone || '+1 (555) 000-0000',
       recipientId,
       recipientName: recipient.name,
+      recipientRegistrationNumber: recipientRegNo,
       recipientAddress: recipient.location?.address || 'District Facility',
       recipientContact: recipient.location?.phone || '+1 (555) 000-0000',
       quantity: actualQty,
       cylinderBarcodes,
       resourceType: 'Oxygen Cylinders (Type-D 40L)',
+      oxygenPurity: '99.5% Medical Grade USP',
+      pressurePsi: donor.pressurePsi || 2050,
+      batchSealNumber: sealNumber,
+      clinicalPriority,
+      authorizingCoordinator: coordinatorName,
+      authorizingPhysician: 'Dr. Amanda Vance, CMO',
+      transportRouteCorridor: `${donor.location?.district || 'District North'} to ${recipient.location?.district || 'District South'} Express Corridor`,
       ambulanceNumber: dispatch.ambulanceNumber,
       deliveryDriver: dispatch.deliveryDriver,
       driverPhone: dispatch.driverPhone,
@@ -211,8 +226,14 @@ class HospitalStreamSimulator {
       serialNumber: serial,
       fromHospitalId: donorId,
       fromHospitalName: donor.name,
+      fromRegistrationNumber: donorRegNo,
       toHospitalId: recipientId,
       toHospitalName: recipient.name,
+      toRegistrationNumber: recipientRegNo,
+      batchSealNumber: sealNumber,
+      clinicalPriority,
+      oxygenPurity: '99.5% Medical Grade USP',
+      authorizingCoordinator: coordinatorName,
       timestamp: transferDoc.timestamp,
       ambulanceNumber: dispatch.ambulanceNumber,
       deliveryDriver: dispatch.deliveryDriver,

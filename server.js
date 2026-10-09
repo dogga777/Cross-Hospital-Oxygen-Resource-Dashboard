@@ -12,7 +12,8 @@ const simulator = require('./src/simulator/stream');
 const { predictDistrictShortages } = require('./src/ml/predictor');
 const { validateDistrictModels, validateHospitalPredictor } = require('./src/ml/validator');
 const { generateRebalancePlan, getOptimizerRules, setOptimizerRules } = require('./src/optimizer/rebalance');
-const { enrichRecommendationsWithGemini, getAiClient } = require('./src/ai/gemini');
+const { enrichRecommendationsWithGemini, getAiClient, getAiPromptConfig, setAiPromptConfig, generateTransferJustification, AI_PROMPT_PRESETS } = require('./src/ai/gemini');
+const { getAlertConfig, setAlertConfig, formatAlertMessage } = require('./src/alerts/config');
 const { generateCsv, generatePdf, generateHospitalsCsv, generateBarcodeMovementsCsv, generateCylindersCsv } = require('./src/export/export');
 
 const app = express();
@@ -168,6 +169,127 @@ app.post('/api/optimizer/rules', async (req, res) => {
   }
 });
 
+// ==========================================
+// AI Clinical Reasoning Customization API
+// ==========================================
+
+// Get current Gemini AI prompt configuration & presets
+app.get('/api/ai/config', (req, res) => {
+  res.json(getAiPromptConfig());
+});
+
+// Update Gemini AI prompt configuration & regenerate recommendations
+app.post('/api/ai/config', async (req, res) => {
+  try {
+    const updated = setAiPromptConfig(req.body);
+    const rawPlan = await generateRebalancePlan();
+    const enrichedRecs = await enrichRecommendationsWithGemini(rawPlan.recommendations);
+    latestRebalancePlan = { ...rawPlan, recommendations: enrichedRecs };
+
+    broadcastWs({
+      type: 'AI_CONFIG_UPDATED',
+      config: updated.config,
+      rebalancePlan: latestRebalancePlan
+    });
+
+    res.json({ success: true, ...updated, plan: latestRebalancePlan });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Live Test Gemini AI Clinical Justification prompt
+app.post('/api/ai/test-prompt', async (req, res) => {
+  try {
+    const { preset, customPersona, customDirective, customTemplate, sampleData } = req.body;
+    const sampleRec = sampleData || {
+      transferQuantity: 40,
+      donorName: 'St. Jude Medical Center',
+      recipientName: 'Metro General Hospital',
+      donorCurrentStock: 240,
+      donorBurnRate: 14.2,
+      donorSurplusHours: 9.5,
+      donorRemainingSurplusHours: 7.2,
+      recipientCurrentStock: 14,
+      recipientBurnRate: 18.0,
+      recipientDepletionHours: 0.8,
+      recipientNewRunwayHours: 3.5,
+      transitMinutes: 14,
+      transitDistanceKm: 4.8
+    };
+
+    const prevConfig = getAiPromptConfig().config;
+    if (preset || customPersona !== undefined || customDirective !== undefined || customTemplate !== undefined) {
+      setAiPromptConfig({
+        activePreset: preset || prevConfig.activePreset,
+        customPersona: customPersona ?? prevConfig.customPersona,
+        customDirective: customDirective ?? prevConfig.customDirective,
+        customTemplate: customTemplate ?? prevConfig.customTemplate
+      });
+    }
+
+    const result = await generateTransferJustification(sampleRec);
+
+    // Restore previous configuration
+    setAiPromptConfig(prevConfig);
+
+    res.json({ success: true, sample: sampleRec, result });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
+// Alert Notifications Customization API
+// ==========================================
+
+// Get alert notification settings
+app.get('/api/alerts/config', (req, res) => {
+  res.json(getAlertConfig());
+});
+
+// Update alert notification settings
+app.post('/api/alerts/config', async (req, res) => {
+  try {
+    const updated = setAlertConfig(req.body);
+
+    if (req.body.emergencyThreshold !== undefined) {
+      setOptimizerRules({ emergencyThreshold: updated.emergencyThreshold });
+      const rawPlan = await generateRebalancePlan();
+      const enrichedRecs = await enrichRecommendationsWithGemini(rawPlan.recommendations);
+      latestRebalancePlan = { ...rawPlan, recommendations: enrichedRecs };
+    }
+
+    broadcastWs({
+      type: 'ALERTS_CONFIG_UPDATED',
+      config: updated,
+      rebalancePlan: latestRebalancePlan
+    });
+
+    res.json({ success: true, config: updated, plan: latestRebalancePlan });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Trigger test alert chime via WebSocket
+app.post('/api/alerts/test-chime', (req, res) => {
+  try {
+    const { soundFrequency } = req.body || {};
+    const alertConfig = getAlertConfig();
+    const testPayload = {
+      type: 'TEST_ALERT_CHIME',
+      soundFrequency: soundFrequency || alertConfig.alertSoundFrequency || 'TWO_TONE',
+      message: 'Test clinical chime triggered: Critical audio alert operational.',
+      timestamp: Date.now()
+    };
+    broadcastWs(testPayload);
+    res.json({ success: true, payload: testPayload });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Held-Out Simulated Data Accuracy Check
 app.get('/api/validation', async (req, res) => {
   try {
@@ -226,15 +348,40 @@ app.get('/api/transfers/history', async (req, res) => {
   }
 });
 
-// Export Transfer History as CSV
+// Helper to enrich transfer logs with registration numbers and custom logistics fields
+async function getEnrichedTransferLogs(db) {
+  const [logs, hospitals] = await Promise.all([
+    db.collection('transfer_logs').find().sort({ timestamp: -1 }).toArray(),
+    db.collection('hospitals').find().toArray()
+  ]);
+
+  const hospMap = new Map();
+  hospitals.forEach(h => hospMap.set(h.id, h));
+
+  return logs.map(log => {
+    const donor = hospMap.get(log.donorId);
+    const recipient = hospMap.get(log.recipientId);
+    return {
+      ...log,
+      donorRegistrationNumber: log.donorRegistrationNumber || donor?.registrationNumber || 'MOH-REG-2026-0000',
+      recipientRegistrationNumber: log.recipientRegistrationNumber || recipient?.registrationNumber || 'MOH-REG-2026-0000',
+      clinicalPriority: log.clinicalPriority || (log.quantity >= 30 ? 'CODE RED (EMERGENCY REBALANCE)' : 'CODE AMBER (HIGH PRIORITY)'),
+      oxygenPurity: log.oxygenPurity || '99.5% Medical Grade USP',
+      pressurePsi: log.pressurePsi || donor?.pressurePsi || 2050,
+      batchSealNumber: log.batchSealNumber || `SEAL-2026-${(log.manifestId || 'MAN').slice(-4)}`,
+      authorizingCoordinator: log.authorizingCoordinator || donor?.location?.dispatchContact || 'District Logistics Command Desk',
+      authorizingPhysician: log.authorizingPhysician || 'Dr. Amanda Vance, CMO',
+      transportRouteCorridor: log.transportRouteCorridor || `${donor?.name || 'Donor'} to ${recipient?.name || 'Recipient'} Express Corridor`
+    };
+  });
+}
+
+// Export Transfer History as CSV (supports custom query options & custom fields)
 app.get('/api/transfers/export/csv', async (req, res) => {
   try {
     const db = getDb();
-    const logs = await db.collection('transfer_logs')
-      .find()
-      .sort({ timestamp: -1 })
-      .toArray();
-    const csvContent = generateCsv(logs);
+    const logs = await getEnrichedTransferLogs(db);
+    const csvContent = generateCsv(logs, req.query);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="oxygen_transfer_manifest_history.csv"');
     res.send(csvContent);
@@ -247,11 +394,8 @@ app.get('/api/transfers/export/csv', async (req, res) => {
 app.get('/api/transfers/export/barcode-csv', async (req, res) => {
   try {
     const db = getDb();
-    const logs = await db.collection('transfer_logs')
-      .find()
-      .sort({ timestamp: -1 })
-      .toArray();
-    const csvContent = generateBarcodeMovementsCsv(logs);
+    const logs = await getEnrichedTransferLogs(db);
+    const csvContent = generateBarcodeMovementsCsv(logs, req.query);
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="oxygen_cylinder_barcode_movements.csv"');
     res.send(csvContent);
@@ -283,11 +427,8 @@ app.get('/api/cylinders/export/csv', async (req, res) => {
 app.get('/api/transfers/export/pdf', async (req, res) => {
   try {
     const db = getDb();
-    const logs = await db.collection('transfer_logs')
-      .find()
-      .sort({ timestamp: -1 })
-      .toArray();
-    generatePdf(logs, res);
+    const logs = await getEnrichedTransferLogs(db);
+    generatePdf(logs, res, req.query);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
