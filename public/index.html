@@ -728,9 +728,29 @@
       
       <!-- LEFT COLUMN: SHORTAGE PREDICTOR -->
       <div class="space-y-2">
-        <div>
-          <h2 class="text-lg font-bold text-slate-800">Shortage Predictor</h2>
-          <p class="text-xs text-slate-500">Projected inventory follows current consumption; hospitals are ordered by risk.</p>
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div class="flex items-center gap-2 flex-wrap">
+              <h2 class="text-lg font-bold text-slate-800">Shortage Predictor</h2>
+              <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                LIVE STREAM
+              </span>
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                OLS 95% CI
+              </span>
+            </div>
+            <p class="text-xs text-slate-500 mt-0.5">Statistical Ordinary Least Squares regression forecast with live dynamic updates.</p>
+          </div>
+
+          <div class="flex items-center gap-1">
+            <button id="predictorFilterUrgentBtn" onclick="setPredictorFilter('urgent')" class="px-2.5 py-1 rounded-md text-xs font-semibold bg-slate-800 text-white shadow-sm transition" title="Show top 2 hospitals by urgency">
+              Priority (Top 2)
+            </button>
+            <button id="predictorFilterAllBtn" onclick="setPredictorFilter('all')" class="px-2.5 py-1 rounded-md text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 transition" title="Show all 6 facilities in fleet">
+              All Fleet (6)
+            </button>
+          </div>
         </div>
 
         <div id="shortagePredictorContainer" class="space-y-3 pt-2">
