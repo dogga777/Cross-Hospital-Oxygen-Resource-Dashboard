@@ -42,7 +42,7 @@
       </div>
 
       <!-- Right: User Hospital Login Profile & Cross-Hospital Notification Bell -->
-      <div class="flex items-center space-x-3 text-xs">
+      <div class="flex items-center space-x-2.5 text-xs">
         
         <!-- Notification Bell (Cross-Hospital Alert Center) -->
         <button id="btnToggleNotifications" class="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer" title="Cross-Hospital Alerts">
@@ -50,23 +50,36 @@
           <span id="notifBadge" class="hidden absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center animate-pulse">0</span>
         </button>
 
-        <!-- Hospital User Login Indicator & Switcher -->
-        <div class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 rounded-lg p-1.5 px-3">
+        <!-- Hospital User Profile & Facility Switcher -->
+        <div id="userProfileBar" class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 rounded-lg p-1.5 px-3">
           <div class="h-6 w-6 rounded-full bg-emerald-500 text-slate-900 flex items-center justify-center font-bold text-xs shrink-0">
             🏥
           </div>
           <div class="leading-tight text-left">
-            <span class="text-[10px] text-slate-400 block uppercase font-bold tracking-wider">Logged in as:</span>
-            <select id="userHospitalLoginSelect" class="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer border-none p-0 pr-2">
-              <option value="HOSP-01" class="bg-slate-900 text-white">Hospital A (Metro General)</option>
-              <option value="HOSP-02" class="bg-slate-900 text-white">Hospital B (St. Jude Medical)</option>
-              <option value="HOSP-03" class="bg-slate-900 text-white">Hospital C (Riverbank Annex)</option>
-              <option value="HOSP-04" class="bg-slate-900 text-white">Hospital D (Oak Valley)</option>
-              <option value="HOSP-05" class="bg-slate-900 text-white">Hospital E (Mercy Urban)</option>
-              <option value="HOSP-06" class="bg-slate-900 text-white">Hospital F (Highland Specialty)</option>
-            </select>
+            <span id="headerHospitalName" class="text-xs font-bold text-white block truncate max-w-[170px]">Hospital A (Metro General)</span>
+            <span id="headerHospitalStaff" class="text-[10px] text-emerald-400 block font-medium truncate max-w-[170px]">Dr. Sarah Chen • Logged In</span>
           </div>
+          <select id="userHospitalLoginSelect" class="bg-slate-900 text-slate-300 font-semibold text-[11px] rounded px-1.5 py-1 border border-slate-700 focus:outline-none cursor-pointer ml-1" title="Switch active facility">
+            <option value="HOSP-01" class="bg-slate-900 text-white">Switch: Hospital A (Metro)</option>
+            <option value="HOSP-02" class="bg-slate-900 text-white">Switch: Hospital B (St. Jude)</option>
+            <option value="HOSP-03" class="bg-slate-900 text-white">Switch: Hospital C (Riverbank)</option>
+            <option value="HOSP-04" class="bg-slate-900 text-white">Switch: Hospital D (Oak Valley)</option>
+            <option value="HOSP-05" class="bg-slate-900 text-white">Switch: Hospital E (Mercy Urban)</option>
+            <option value="HOSP-06" class="bg-slate-900 text-white">Switch: Hospital F (Highland)</option>
+          </select>
         </div>
+
+        <!-- Register New Hospital Button -->
+        <button id="btnOpenRegisterModal" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 transition shadow-sm cursor-pointer" title="Register a new hospital into the network">
+          <i data-lucide="plus-circle" class="h-3.5 w-3.5"></i>
+          <span class="hidden sm:inline">Register Hospital</span>
+        </button>
+
+        <!-- Log Out Button -->
+        <button id="btnLogout" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 hover:text-rose-200 text-slate-300 border border-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer" title="Log out of current hospital facility">
+          <i data-lucide="log-out" class="h-3.5 w-3.5"></i>
+          <span class="hidden sm:inline">Log Out</span>
+        </button>
 
       </div>
 
@@ -553,6 +566,206 @@
     </section>
 
   </main>
+
+  <!-- ============================================================== -->
+  <!-- HOSPITAL AUTHENTICATION & REGISTRATION MODAL                   -->
+  <!-- ============================================================== -->
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md overflow-y-auto hidden">
+    <div class="relative w-full max-w-lg bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+      
+      <!-- Modal Header Banner -->
+      <div class="bg-gradient-to-r from-[#1e293b] via-[#24334a] to-[#1e293b] text-white p-5 sm:p-6 relative">
+        <button id="btnCloseAuthModal" type="button" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/10 transition cursor-pointer hidden" title="Close">
+          <i data-lucide="x" class="h-5 w-5"></i>
+        </button>
+
+        <div class="flex items-center space-x-3">
+          <div class="h-10 w-10 rounded-xl bg-emerald-500 text-slate-900 flex items-center justify-center text-xl font-bold shadow-md shrink-0">
+            🏥
+          </div>
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-white tracking-tight">Cross-Hospital Oxygen Portal</h2>
+            <p class="text-xs text-slate-300">Metro District 04 Regional Telemetry & Resource Grid</p>
+          </div>
+        </div>
+
+        <!-- Auth Tabs: Sign In vs Register -->
+        <div class="flex rounded-lg bg-slate-900/70 p-1 mt-4 border border-slate-700/60 text-xs font-semibold">
+          <button id="tabLoginBtn" type="button" class="flex-1 py-2 rounded-md text-white bg-indigo-600 shadow-sm transition text-center cursor-pointer">
+            Facility Sign In
+          </button>
+          <button id="tabRegisterBtn" type="button" class="flex-1 py-2 rounded-md text-slate-300 hover:text-white transition text-center cursor-pointer">
+            + Register New Hospital
+          </button>
+        </div>
+      </div>
+
+      <!-- Auth Alert Container (Errors / Warnings) -->
+      <div id="authAlert" class="hidden mx-6 mt-4 p-3 rounded-lg text-xs font-semibold flex items-center gap-2"></div>
+
+      <!-- TAB 1: FACILITY LOGIN FORM -->
+      <div id="loginView" class="p-6 space-y-4">
+        
+        <!-- Fast 1-Click Demo Login Selector -->
+        <div class="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+              ⚡ 1-Click Instant Demo Access:
+            </label>
+            <span class="text-[10px] text-indigo-600 font-semibold">Select facility to test</span>
+          </div>
+          <div class="grid grid-cols-2 gap-2 text-xs">
+            <button type="button" onclick="quickLoginHospital('HOSP-01')" class="text-left px-2.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 font-medium transition cursor-pointer flex items-center justify-between shadow-xs">
+              <span class="truncate">🏥 Hospital A (Metro)</span>
+              <span class="text-[10px] text-amber-600 font-bold ml-1">Trauma</span>
+            </button>
+            <button type="button" onclick="quickLoginHospital('HOSP-02')" class="text-left px-2.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 font-medium transition cursor-pointer flex items-center justify-between shadow-xs">
+              <span class="truncate">🏥 Hospital B (St. Jude)</span>
+              <span class="text-[10px] text-emerald-600 font-bold ml-1">Surplus</span>
+            </button>
+            <button type="button" onclick="quickLoginHospital('HOSP-03')" class="text-left px-2.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 font-medium transition cursor-pointer flex items-center justify-between shadow-xs">
+              <span class="truncate">🏥 Hospital C (Riverbank)</span>
+              <span class="text-[10px] text-rose-600 font-bold ml-1">Shortage</span>
+            </button>
+            <button type="button" onclick="quickLoginHospital('HOSP-04')" class="text-left px-2.5 py-2 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-300 text-slate-700 hover:text-indigo-700 font-medium transition cursor-pointer flex items-center justify-between shadow-xs">
+              <span class="truncate">🏥 Hospital D (Oak Valley)</span>
+              <span class="text-[10px] text-slate-500 ml-1">Suburb</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="relative flex py-1 items-center">
+          <div class="flex-grow border-t border-slate-200"></div>
+          <span class="flex-shrink mx-3 text-[11px] text-slate-400 font-semibold uppercase tracking-wider">or sign in with credentials</span>
+          <div class="flex-grow border-t border-slate-200"></div>
+        </div>
+
+        <form id="formLogin" class="space-y-3.5">
+          <div>
+            <label for="loginEmail" class="block text-xs font-semibold text-slate-700 mb-1">Coordinator Email or Registered Facility</label>
+            <input type="text" id="loginEmail" required placeholder="admin@metro.med" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-slate-800">
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="loginPassword" class="block text-xs font-semibold text-slate-700">Password</label>
+              <span class="text-[11px] text-slate-400">Default: hospital123</span>
+            </div>
+            <input type="password" id="loginPassword" placeholder="••••••••" class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-slate-800">
+          </div>
+
+          <button type="submit" id="btnSubmitLogin" class="w-full py-2.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer mt-2">
+            <i data-lucide="log-in" class="h-4 w-4"></i>
+            <span>Sign In to Hospital Portal</span>
+          </button>
+        </form>
+
+        <div class="text-center pt-2">
+          <p class="text-xs text-slate-500">
+            Is your hospital not registered yet? 
+            <button type="button" id="linkGoToRegister" class="text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer ml-1">
+              Register Facility &rarr;
+            </button>
+          </p>
+        </div>
+      </div>
+
+      <!-- TAB 2: HOSPITAL REGISTRATION FORM -->
+      <div id="registerView" class="p-6 space-y-4 hidden">
+        <div class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-xs text-emerald-800">
+          <span class="font-bold">✨ Connect your hospital</span> to District 04 Real-Time Oxygen Grid. Your hospital will receive live telemetry monitoring, barcode inventory tracking, and automatic emergency rebalance support.
+        </div>
+
+        <form id="formRegister" class="space-y-3.5 text-xs">
+          <!-- Hospital Name & Facility Type -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Hospital Facility Name *</label>
+              <input type="text" id="regHospitalName" required placeholder="e.g. City Hope Medical Center" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Facility Classification *</label>
+              <select id="regHospitalType" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition bg-white">
+                <option value="Level 1 Trauma & Medical Center">Level 1 Trauma & Medical Center</option>
+                <option value="Tertiary Teaching Hospital">Tertiary Teaching Hospital</option>
+                <option value="Critical Care & Overflow Annex">Critical Care & Overflow Annex</option>
+                <option value="Community Healthcare Complex">Community Healthcare Complex</option>
+                <option value="Urban Acute Care Clinic">Urban Acute Care Clinic</option>
+                <option value="Specialty Surgical Institute">Specialty Surgical Institute</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Address & District -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Street Address *</label>
+              <input type="text" id="regAddress" required placeholder="e.g. 520 Pine Avenue, Medical Sector" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">District / Zone</label>
+              <input type="text" id="regDistrict" value="Metro District 04" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+            </div>
+          </div>
+
+          <!-- Dispatch Contact & Phone -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Dispatch Logistics Contact *</label>
+              <input type="text" id="regContactPerson" required placeholder="e.g. Dr. Amanda Reed (Trauma Lead)" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Emergency Dispatch Phone *</label>
+              <input type="tel" id="regPhone" required placeholder="e.g. +1 (555) 018-9922" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+            </div>
+          </div>
+
+          <!-- Capacities -->
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Total Capacity (Cyl)</label>
+              <input type="number" id="regCapacity" min="50" max="1000" value="250" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Current Stock (Cyl)</label>
+              <input type="number" id="regInitialStock" min="5" max="1000" value="85" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Burn Rate (cyl/hr)</label>
+              <input type="number" step="0.1" id="regBurnRate" min="0.5" max="50" value="9.5" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 outline-none">
+            </div>
+          </div>
+
+          <!-- Login Account Credentials -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-100">
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Hospital Staff Email *</label>
+              <input type="email" id="regEmail" required placeholder="dispatch@cityhope.med" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+            </div>
+            <div>
+              <label class="block font-semibold text-slate-700 mb-1">Account Password *</label>
+              <input type="password" id="regPassword" required placeholder="Minimum 4 characters" class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition">
+            </div>
+          </div>
+
+          <button type="submit" id="btnSubmitRegister" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer mt-2">
+            <i data-lucide="building-2" class="h-4 w-4"></i>
+            <span>Register Hospital & Connect to Network</span>
+          </button>
+        </form>
+
+        <div class="text-center pt-1">
+          <p class="text-xs text-slate-500">
+            Already registered? 
+            <button type="button" id="linkGoToLogin" class="text-emerald-600 hover:text-emerald-800 font-bold underline cursor-pointer ml-1">
+              Back to Facility Sign In &rarr;
+            </button>
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 

@@ -64,7 +64,7 @@ async function runLiveTests() {
     console.log('\n[Suite 2] Hospital Fleet Telemetry');
     const hospRes = await fetchJson('/api/hospitals');
     assert(hospRes.status === 200, 'GET /api/hospitals returns HTTP 200');
-    assert(Array.isArray(hospRes.body) && hospRes.body.length === 6, 'Monitors exactly 6 district hospitals');
+    assert(Array.isArray(hospRes.body) && hospRes.body.length >= 6, 'Monitors district hospitals (at least 6 facilities)');
     const hosp1 = hospRes.body.find(h => h.id === 'HOSP-01');
     assert(hosp1 && hosp1.name === 'Metro General Hospital', 'HOSP-01 is Metro General Hospital');
 
@@ -72,7 +72,7 @@ async function runLiveTests() {
     console.log('\n[Suite 3] Trend-Based Shortage Predictor');
     const predRes = await fetchJson('/api/predictions');
     assert(predRes.status === 200, 'GET /api/predictions returns HTTP 200');
-    assert(Array.isArray(predRes.body) && predRes.body.length === 6, 'Predictions calculated for all 6 hospitals');
+    assert(Array.isArray(predRes.body) && predRes.body.length >= 6, 'Predictions calculated for all registered hospitals');
     const hasDeficit = predRes.body.some(p => p.timeToShortageHours <= 4.0);
     const hasSurplus = predRes.body.some(p => p.surplusRunwayHours >= 6.0);
     assert(hasDeficit, 'At least one hospital flagged with shortage risk (< 4h)');
@@ -206,6 +206,49 @@ async function runLiveTests() {
         resolve();
       });
     });
+
+    // 13. Hospital Registration & Authentication API
+    console.log('\n[Suite 13] Hospital Registration & Authentication API');
+    const authHospRes = await fetchJson('/api/auth/hospitals');
+    assert(authHospRes.status === 200, 'GET /api/auth/hospitals returns HTTP 200');
+    assert(Array.isArray(authHospRes.body) && authHospRes.body.length >= 6, 'Returns registered hospital facilities');
+
+    // Test staff login
+    const loginRes = await fetchJson('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'admin@metro.med', password: 'hospital123' })
+    });
+    assert(loginRes.status === 200, 'POST /api/auth/login returns HTTP 200');
+    assert(loginRes.body.success === true && loginRes.body.token.startsWith('AUTH-'), 'Issues signed authentication session token');
+    assert(loginRes.body.hospital.id === 'HOSP-01', 'Authenticated hospital session resolved to HOSP-01');
+
+    // Test new hospital registration
+    const testRegEmail = `dispatch-${Date.now()}@valleycrest.med`;
+    const regRes = await fetchJson('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: `Valley Crest Medical Center ${Date.now().toString().slice(-4)}`,
+        type: 'Community Care Facility',
+        address: '770 Valley Crest Road',
+        district: 'District 04 East',
+        dispatchContact: 'Nurse Director Sarah Lin',
+        phone: '+1 (555) 019-3388',
+        capacity: 260,
+        initialStock: 80,
+        baselineBurnRate: 9.0,
+        email: testRegEmail,
+        password: 'passwordSecure123'
+      })
+    });
+    assert(regRes.status === 201, 'POST /api/auth/register returns HTTP 201 Created');
+    assert(regRes.body.success === true, 'Hospital registration succeeded');
+    assert(regRes.body.hospital.id.startsWith('HOSP-'), 'Assigned unique hospital facility ID');
+
+    // Verify cylinders auto-provisioned
+    const cylRes = await fetchJson(`/api/cylinders?hospitalId=${regRes.body.hospital.id}`);
+    assert(cylRes.status === 200 && Array.isArray(cylRes.body) && cylRes.body.length >= 50, 'Barcoded oxygen cylinders auto-provisioned for new facility');
 
     console.log(`\n======================================================`);
     console.log(`🎉 LIVE VERIFICATION RESULTS: ${passed}/${total} TESTS PASSED!`);

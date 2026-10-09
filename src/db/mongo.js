@@ -31,6 +31,11 @@ class InMemoryCollection {
 
   _matchesQuery(doc, query = {}) {
     for (const [key, value] of Object.entries(query)) {
+      if (key === '$or' && Array.isArray(value)) {
+        const matchesAny = value.some(subQ => this._matchesQuery(doc, subQ));
+        if (!matchesAny) return false;
+        continue;
+      }
       if (value && typeof value === 'object') {
         if ('$gt' in value && !(doc[key] > value.$gt)) return false;
         if ('$gte' in value && !(doc[key] >= value.$gte)) return false;

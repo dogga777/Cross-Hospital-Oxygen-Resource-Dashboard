@@ -1,4 +1,72 @@
+const crypto = require('crypto');
 const { getDb } = require('./mongo');
+
+function hashPassword(password) {
+  return crypto.createHash('sha256').update(String(password).trim()).digest('hex');
+}
+
+const INITIAL_USERS = [
+  {
+    id: 'USER-01',
+    hospitalId: 'HOSP-01',
+    hospitalName: 'Metro General Hospital',
+    email: 'admin@metro.med',
+    passwordHash: hashPassword('hospital123'),
+    contactPerson: 'Dr. Sarah Chen',
+    role: 'HOSPITAL_COORDINATOR',
+    createdAt: Date.now()
+  },
+  {
+    id: 'USER-02',
+    hospitalId: 'HOSP-02',
+    hospitalName: 'St. Jude Medical Center',
+    email: 'admin@stjude.med',
+    passwordHash: hashPassword('hospital123'),
+    contactPerson: 'Officer Marcus Brody',
+    role: 'HOSPITAL_COORDINATOR',
+    createdAt: Date.now()
+  },
+  {
+    id: 'USER-03',
+    hospitalId: 'HOSP-03',
+    hospitalName: 'Riverbank Emergency Annex',
+    email: 'admin@riverbank.med',
+    passwordHash: hashPassword('hospital123'),
+    contactPerson: 'Nurse Supervisor Elena Gomez',
+    role: 'HOSPITAL_COORDINATOR',
+    createdAt: Date.now()
+  },
+  {
+    id: 'USER-04',
+    hospitalId: 'HOSP-04',
+    hospitalName: 'Oak Valley Community Hospital',
+    email: 'admin@oakvalley.med',
+    passwordHash: hashPassword('hospital123'),
+    contactPerson: 'Dispatch Chief Alan Wright',
+    role: 'HOSPITAL_COORDINATOR',
+    createdAt: Date.now()
+  },
+  {
+    id: 'USER-05',
+    hospitalId: 'HOSP-05',
+    hospitalName: 'Mercy Urban Care',
+    email: 'admin@mercy.med',
+    passwordHash: hashPassword('hospital123'),
+    contactPerson: 'Coordinator Denise Vance',
+    role: 'HOSPITAL_COORDINATOR',
+    createdAt: Date.now()
+  },
+  {
+    id: 'USER-06',
+    hospitalId: 'HOSP-06',
+    hospitalName: 'Highland Specialty Institute',
+    email: 'admin@highland.med',
+    passwordHash: hashPassword('hospital123'),
+    contactPerson: 'Officer Kevin Thorne',
+    role: 'HOSPITAL_COORDINATOR',
+    createdAt: Date.now()
+  }
+];
 
 const INITIAL_HOSPITALS = [
   {
@@ -159,13 +227,19 @@ function getRandomDispatchDetails() {
 }
 
 // Calculate transport distance (km) and travel time (minutes) between hospitals
-function getTransitInfo(hospAId, hospBId) {
-  const hA = INITIAL_HOSPITALS.find(h => h.id === hospAId);
-  const hB = INITIAL_HOSPITALS.find(h => h.id === hospBId);
+function getTransitInfo(hospAId, hospBId, allHospitals = null) {
+  const list = (allHospitals && allHospitals.length) ? allHospitals : INITIAL_HOSPITALS;
+  const hA = list.find(h => h.id === hospAId) || INITIAL_HOSPITALS.find(h => h.id === hospAId);
+  const hB = list.find(h => h.id === hospBId) || INITIAL_HOSPITALS.find(h => h.id === hospBId);
   if (!hA || !hB) return { distanceKm: 5.0, transitMinutes: 15 };
 
-  const dx = hA.location.gridX - hB.location.gridX;
-  const dy = hA.location.gridY - hB.location.gridY;
+  const ax = hA.location?.gridX ?? (hA.location?.lat ? (hA.location.lat - 40.6) * 500 : 50);
+  const ay = hA.location?.gridY ?? (hA.location?.lng ? Math.abs(hA.location.lng + 74.0) * 500 : 50);
+  const bx = hB.location?.gridX ?? (hB.location?.lat ? (hB.location.lat - 40.6) * 500 : 50);
+  const by = hB.location?.gridY ?? (hB.location?.lng ? Math.abs(hB.location.lng + 74.0) * 500 : 50);
+
+  const dx = ax - bx;
+  const dy = ay - by;
   const gridDistance = Math.sqrt(dx * dx + dy * dy);
   const distanceKm = Math.max(1.8, +(gridDistance * 0.18).toFixed(1));
   const transitMinutes = Math.max(8, Math.round((distanceKm / 25) * 60 + 5));
@@ -278,13 +352,63 @@ async function seedDatabaseIfEmpty() {
     await transfersCol.insertMany(sampleTransfers);
     console.log(`[Seed] Seeded ${sampleTransfers.length} completed transfer manifests.`);
   }
+
+  // Pre-seed default user credentials if empty
+  const usersCol = db.collection('users');
+  const userCount = await usersCol.countDocuments();
+  if (userCount === 0) {
+    console.log('[Seed] Seeding 6 default hospital user accounts...');
+    await usersCol.insertMany(INITIAL_USERS);
+    console.log(`[Seed] Seeded ${INITIAL_USERS.length} hospital coordinator accounts.`);
+  }
+}
+
+// Generate initial telemetry history for a newly registered hospital
+async function seedHospitalTelemetry(hosp) {
+  const db = getDb();
+  const telemetryCol = db.collection('resource_telemetry');
+  const now = Date.now();
+  const points = 20;
+  const stepMs = 6 * 60 * 1000;
+  const hourlyRate = hosp.baselineBurnRate || 10;
+  const historyDocs = [];
+
+  for (let i = points; i >= 0; i--) {
+    const pointTime = now - (i * stepMs);
+    const hoursAgo = (i * stepMs) / (3600 * 1000);
+    const noise = (Math.sin(i * 1.5) * 1.2) + ((Math.random() - 0.5) * 1.0);
+    const historicalStock = Math.min(
+      hosp.capacity,
+      Math.max(5, Math.round(hosp.currentStock + (hoursAgo * hourlyRate) + noise))
+    );
+
+    historyDocs.push({
+      hospitalId: hosp.id,
+      hospitalName: hosp.name,
+      resourceType: 'Oxygen Cylinders (Type-D 40L)',
+      timestamp: pointTime,
+      currentStock: historicalStock,
+      capacity: hosp.capacity,
+      hourlyConsumptionRate: +(hourlyRate + (Math.sin(i) * 0.8)).toFixed(2),
+      pressurePsi: Math.round(500 + (historicalStock / hosp.capacity) * 1700),
+      activePatientsOnO2: Math.max(5, Math.round((hosp.activePatientsOnO2 || 20) + (Math.sin(i) * 3)))
+    });
+  }
+
+  if (historyDocs.length > 0) {
+    await telemetryCol.insertMany(historyDocs);
+    console.log(`[Seed] Seeded ${historyDocs.length} initial telemetry points for new hospital ${hosp.name}`);
+  }
 }
 
 module.exports = {
   INITIAL_HOSPITALS,
+  INITIAL_USERS,
   DISPATCH_AMBULANCES,
   DISPATCH_DRIVERS,
   getRandomDispatchDetails,
   getTransitInfo,
-  seedDatabaseIfEmpty
+  seedDatabaseIfEmpty,
+  seedHospitalTelemetry,
+  hashPassword
 };

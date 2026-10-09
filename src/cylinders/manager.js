@@ -230,7 +230,20 @@ async function respondToNotification(notificationId, action, responderHospitalId
   }
 }
 
+// Register and seed new barcoded cylinders for a newly registered hospital
+async function registerHospitalCylinders(hospitalId, hospitalName, prefix, count = 50, initialPressure = 2000) {
+  const db = getDb();
+  const cylinders = generateCylinderBatch(hospitalId, hospitalName, prefix, count, initialPressure);
+  if (cylinders.length > 0) {
+    await db.collection('cylinders').insertMany(cylinders);
+    console.log(`[Cylinders] Seeded ${cylinders.length} barcoded cylinders for new hospital ${hospitalName} (${hospitalId})`);
+  }
+  return cylinders;
+}
+
 module.exports = {
+  generateCylinderBatch,
+  registerHospitalCylinders,
   seedCylindersIfEmpty,
   getCylinders,
   processBarcodeScan,

@@ -6,7 +6,8 @@ const { WebSocketServer } = require('ws');
 
 const config = require('./src/config');
 const { connectDb, getDb, getDbStatus } = require('./src/db/mongo');
-const { seedDatabaseIfEmpty } = require('./src/db/seed');
+const { seedDatabaseIfEmpty, seedHospitalTelemetry, hashPassword } = require('./src/db/seed');
+const { registerHospitalCylinders } = require('./src/cylinders/manager');
 const simulator = require('./src/simulator/stream');
 const { predictDistrictShortages } = require('./src/ml/predictor');
 const { validateDistrictModels, validateHospitalPredictor } = require('./src/ml/validator');
@@ -326,15 +327,208 @@ app.post('/api/simulation/set-stock', async (req, res) => {
   }
 });
 
-// Authentication: Hospital Staff Login
+// ==========================================
+// Authentication & Hospital Registration API
+// ==========================================
+
+// Register New Hospital Facility into the District Network
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const {
+      name,
+      type,
+      district,
+      address,
+      phone,
+      dispatchContact,
+      capacity,
+      initialStock,
+      baselineBurnRate,
+      email,
+      password,
+      lat,
+      lng
+    } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Hospital facility name is required.' });
+    }
+    if (!email || !email.trim()) {
+      return res.status(400).json({ error: 'Account email address is required.' });
+    }
+    if (!password || !password.trim()) {
+      return res.status(400).json({ error: 'Password is required (minimum 4 characters).' });
+    }
+
+    const db = getDb();
+    const hospCol = db.collection('hospitals');
+    const usersCol = db.collection('users');
+
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanName = name.trim();
+
+    // Check if email already registered
+    const existingUser = await usersCol.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(409).json({ error: 'An account with this email address already exists. Please sign in.' });
+    }
+
+    // Check if hospital with same name already registered
+    const existingHosp = await hospCol.findOne({ name: cleanName });
+    if (existingHosp) {
+      return res.status(409).json({ error: 'A hospital facility with this name is already registered.' });
+    }
+
+    // Generate next unique Hospital ID (HOSP-07, HOSP-08, etc.)
+    const existingHospitals = await hospCol.find().toArray();
+    let maxNum = 6;
+    for (const h of existingHospitals) {
+      if (h.id && h.id.startsWith('HOSP-')) {
+        const num = parseInt(h.id.replace('HOSP-', ''), 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+    }
+    const newId = `HOSP-${String(maxNum + 1).padStart(2, '0')}`;
+
+    // Clean prefix for cylinder barcode serial numbers (e.g. HOPE, ANNE, CITY)
+    const rawLetters = cleanName.replace(/[^A-Za-z]/g, '').toUpperCase();
+    const prefix = (rawLetters.slice(0, 4) || 'GEN').padEnd(3, 'X');
+
+    const parsedCap = Math.max(50, Number(capacity) || 250);
+    const parsedStock = Math.max(5, Math.min(parsedCap, Number(initialStock) || 80));
+    const parsedBurn = Math.max(1.0, Number(baselineBurnRate) || 10.0);
+
+    // Compute realistic coordinates in District 04 if not given
+    const randomOffsetLat = (Math.random() - 0.5) * 0.08;
+    const randomOffsetLng = (Math.random() - 0.5) * 0.12;
+    const computedLat = lat ? Number(lat) : +(40.7300 + randomOffsetLat).toFixed(4);
+    const computedLng = lng ? Number(lng) : +(-73.9850 + randomOffsetLng).toFixed(4);
+
+    const hospitalDoc = {
+      id: newId,
+      name: cleanName,
+      type: type || 'General Acute Care & Emergency',
+      capacity: parsedCap,
+      currentStock: parsedStock,
+      baselineBurnRate: parsedBurn,
+      location: {
+        district: district || 'Metro District 04',
+        address: address || `${cleanName} Campus, District 04`,
+        gridX: Math.round(25 + Math.random() * 50),
+        gridY: Math.round(25 + Math.random() * 50),
+        lat: computedLat,
+        lng: computedLng,
+        phone: phone || '+1 (555) 019-8000',
+        dispatchContact: dispatchContact || 'Emergency Intake Coordinator'
+      },
+      activePatientsOnO2: Math.max(5, Math.round(parsedStock * 0.35)),
+      pressurePsi: Math.round(450 + (parsedStock / parsedCap) * 1750),
+      status: parsedStock <= 20 ? 'ACUTE_SHORTAGE_IMMINENT' : 'STABLE_SURPLUS',
+      createdAt: Date.now()
+    };
+
+    await hospCol.insertOne(hospitalDoc);
+
+    // Save user account credentials
+    const userDoc = {
+      id: `USER-${Date.now()}`,
+      hospitalId: newId,
+      hospitalName: cleanName,
+      email: cleanEmail,
+      passwordHash: hashPassword(password),
+      contactPerson: dispatchContact || 'Staff Coordinator',
+      role: 'HOSPITAL_COORDINATOR',
+      createdAt: Date.now()
+    };
+    await usersCol.insertOne(userDoc);
+
+    // Seed realistic barcoded cylinders for this newly registered hospital
+    const cylinderCount = Math.min(parsedCap, Math.max(25, Math.round(parsedStock)));
+    await registerHospitalCylinders(newId, cleanName, prefix, cylinderCount, hospitalDoc.pressurePsi);
+
+    // Seed initial 2-hour telemetry history so ML predictor works immediately
+    await seedHospitalTelemetry(hospitalDoc);
+
+    const token = `AUTH-${newId}-${Date.now()}`;
+
+    // Broadcast new hospital to all connected clients
+    broadcastWs({
+      type: 'HOSPITAL_REGISTERED',
+      hospital: hospitalDoc
+    });
+
+    console.log(`[Auth] ✓ Registered new hospital: ${cleanName} (${newId}) by ${cleanEmail}`);
+
+    res.status(201).json({
+      success: true,
+      token,
+      hospital: {
+        id: hospitalDoc.id,
+        name: hospitalDoc.name,
+        type: hospitalDoc.type,
+        address: hospitalDoc.location?.address,
+        phone: hospitalDoc.location?.phone,
+        currentStock: hospitalDoc.currentStock,
+        capacity: hospitalDoc.capacity,
+        prefix,
+        lat: computedLat,
+        lng: computedLng
+      },
+      user: {
+        email: userDoc.email,
+        contactPerson: userDoc.contactPerson,
+        role: userDoc.role
+      }
+    });
+  } catch (err) {
+    console.error('[Auth] Error registering hospital:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Hospital Staff Login
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { hospitalId } = req.body;
+    const { email, password, hospitalId } = req.body;
     const db = getDb();
-    const hospital = await db.collection('hospitals').findOne({ id: hospitalId || 'HOSP-01' });
-    if (!hospital) return res.status(404).json({ error: 'Hospital not found' });
+    const hospCol = db.collection('hospitals');
+    const usersCol = db.collection('users');
+
+    let hospital = null;
+    let user = null;
+
+    if (email && email.trim()) {
+      // Login via email & password
+      const cleanEmail = email.trim().toLowerCase();
+      user = await usersCol.findOne({ email: cleanEmail });
+
+      if (!user) {
+        return res.status(401).json({ error: 'No account found with this email. Please register your hospital.' });
+      }
+
+      if (password && hashPassword(password) !== user.passwordHash) {
+        return res.status(401).json({ error: 'Invalid password. Please check your credentials.' });
+      }
+
+      hospital = await hospCol.findOne({ id: user.hospitalId });
+    } else if (hospitalId) {
+      // Direct hospital selector / demo sign in
+      hospital = await hospCol.findOne({ id: hospitalId });
+      if (!hospital) return res.status(404).json({ error: 'Hospital not found.' });
+      user = await usersCol.findOne({ hospitalId });
+    } else {
+      return res.status(400).json({ error: 'Please enter your account email and password, or select a facility.' });
+    }
+
+    if (!hospital) {
+      return res.status(404).json({ error: 'Hospital record not found.' });
+    }
+
+    const token = `AUTH-${hospital.id}-${Date.now()}`;
+
     res.json({
       success: true,
+      token,
       hospital: {
         id: hospital.id,
         name: hospital.name,
@@ -342,9 +536,73 @@ app.post('/api/auth/login', async (req, res) => {
         address: hospital.location?.address,
         phone: hospital.location?.phone,
         currentStock: hospital.currentStock,
-        capacity: hospital.capacity
+        capacity: hospital.capacity,
+        lat: hospital.location?.lat,
+        lng: hospital.location?.lng
       },
-      token: `AUTH-${hospital.id}-${Date.now()}`
+      user: {
+        email: user?.email || `coordinator@${hospital.id.toLowerCase()}.med`,
+        contactPerson: user?.contactPerson || hospital.location?.dispatchContact || 'Staff Coordinator',
+        role: user?.role || 'HOSPITAL_COORDINATOR'
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get registered hospitals list for authentication selector & demo logins
+app.get('/api/auth/hospitals', async (req, res) => {
+  try {
+    const db = getDb();
+    const hospitals = await db.collection('hospitals').find().toArray();
+    res.json(hospitals.map(h => ({
+      id: h.id,
+      name: h.name,
+      type: h.type,
+      address: h.location?.address,
+      phone: h.location?.phone,
+      currentStock: h.currentStock,
+      capacity: h.capacity,
+      lat: h.location?.lat,
+      lng: h.location?.lng
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Current user session check
+app.get('/api/auth/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const hospitalId = req.query.hospitalId || (authHeader ? authHeader.replace('Bearer ', '').split('-')[1] : null);
+    if (!hospitalId) {
+      return res.status(401).json({ authenticated: false });
+    }
+    const db = getDb();
+    const hospital = await db.collection('hospitals').findOne({ id: hospitalId });
+    if (!hospital) return res.status(404).json({ error: 'Hospital not found.' });
+    const user = await db.collection('users').findOne({ hospitalId });
+
+    res.json({
+      authenticated: true,
+      hospital: {
+        id: hospital.id,
+        name: hospital.name,
+        type: hospital.type,
+        address: hospital.location?.address,
+        phone: hospital.location?.phone,
+        currentStock: hospital.currentStock,
+        capacity: hospital.capacity,
+        lat: hospital.location?.lat,
+        lng: hospital.location?.lng
+      },
+      user: {
+        email: user?.email || '',
+        contactPerson: user?.contactPerson || '',
+        role: user?.role || 'HOSPITAL_COORDINATOR'
+      }
     });
   } catch (err) {
     res.status(500).json({ error: err.message });

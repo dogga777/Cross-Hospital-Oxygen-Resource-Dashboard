@@ -90,6 +90,65 @@ async function runSystemTests() {
     const logs = await db.collection('transfer_logs').countDocuments();
     assert(logs > 0, `Transfer transaction logged in MongoDB collection`);
 
+    // [Test 7] Hospital Registration & Authentication Layer
+    console.log(`\n[Test 7] Hospital Registration & Authentication Engine`);
+    const { registerHospitalCylinders } = require('./src/cylinders/manager');
+    const { seedHospitalTelemetry, hashPassword } = require('./src/db/seed');
+
+    const testRegHosp = {
+      id: 'HOSP-07',
+      name: 'City Hope Medical Center',
+      type: 'Level 1 Trauma & Medical Center',
+      capacity: 300,
+      currentStock: 90,
+      baselineBurnRate: 12.0,
+      location: {
+        district: 'Metro East',
+        address: '520 Pine Avenue, District 04',
+        lat: 40.7320,
+        lng: -73.9820,
+        phone: '+1 (555) 019-9922',
+        dispatchContact: 'Dr. Amanda Reed'
+      },
+      activePatientsOnO2: 30,
+      pressurePsi: 1800,
+      status: 'STABLE_SURPLUS',
+      createdAt: Date.now()
+    };
+
+    await db.collection('hospitals').insertOne(testRegHosp);
+    const testUser = {
+      id: 'USER-07',
+      hospitalId: 'HOSP-07',
+      hospitalName: testRegHosp.name,
+      email: 'admin@cityhope.med',
+      passwordHash: hashPassword('securePass123'),
+      contactPerson: 'Dr. Amanda Reed',
+      role: 'HOSPITAL_COORDINATOR',
+      createdAt: Date.now()
+    };
+    await db.collection('users').insertOne(testUser);
+
+    await registerHospitalCylinders('HOSP-07', testRegHosp.name, 'HOPE', 50, 1800);
+    await seedHospitalTelemetry(testRegHosp);
+
+    const foundHosp = await db.collection('hospitals').findOne({ id: 'HOSP-07' });
+    assert(foundHosp && foundHosp.name === 'City Hope Medical Center', `Hospital registered in database (Found: ${foundHosp?.name})`);
+
+    const foundUser = await db.collection('users').findOne({ email: 'admin@cityhope.med' });
+    assert(foundUser && foundUser.passwordHash === hashPassword('securePass123'), `Hospital user credentials securely hashed and stored`);
+
+    const newCyls = await db.collection('cylinders').countDocuments({ hospitalId: 'HOSP-07' });
+    assert(newCyls >= 50, `Barcoded cylinders auto-provisioned for new hospital (Count: ${newCyls})`);
+
+    const newTelem = await db.collection('resource_telemetry').countDocuments({ hospitalId: 'HOSP-07' });
+    assert(newTelem >= 20, `Telemetry history auto-generated for trend prediction (Points: ${newTelem})`);
+
+    // Verify authentication match
+    const validAuth = foundUser.passwordHash === hashPassword('securePass123');
+    const invalidAuth = foundUser.passwordHash === hashPassword('wrongPassword');
+    assert(validAuth === true && invalidAuth === false, `Password authentication validates correctly and rejects bad credentials`);
+
     console.log(`\n======================================================`);
     console.log(`🎉 ALL TESTS PASSED: ${passed}/${total} criteria verified!`);
     console.log(`======================================================\n`);

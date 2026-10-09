@@ -15,6 +15,8 @@ let state = {
   routePolyline: null,
   selectedHospitalId: 'HOSP-01',
   loggedInHospitalId: 'HOSP-01', // Default logged-in hospital: Hospital A
+  currentUser: null,
+  authToken: null,
   notifications: []
 };
 
@@ -95,7 +97,32 @@ const HOSPITALS_DATA = {
 };
 
 function getHosp(id) {
-  return HOSPITALS_DATA[id] || {
+  if (HOSPITALS_DATA[id]) return HOSPITALS_DATA[id];
+
+  // Dynamically resolve newly registered hospitals from backend fleet
+  const found = (state.hospitals || []).find(h => h.id === id);
+  if (found) {
+    const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const num = parseInt((id || '').replace('HOSP-', ''), 10) || 7;
+    const letter = letters[num - 1] || 'X';
+    const cleanLetters = (found.name || '').replace(/[^A-Za-z]/g, '').toUpperCase();
+    const prefix = (cleanLetters.slice(0, 4) || 'GEN').padEnd(3, 'X');
+
+    return {
+      letter,
+      area: found.location?.district || 'District 04',
+      shortName: `Hospital ${letter}`,
+      fullName: found.name,
+      prefix,
+      lat: found.location?.lat || 40.7300,
+      lng: found.location?.lng || -73.9850,
+      address: found.location?.address || `${found.name}, District 04`,
+      phone: found.location?.phone || '+1 (555) 019-0000',
+      dotColor: 'bg-indigo-500'
+    };
+  }
+
+  return {
     letter: '?',
     area: 'District',
     shortName: 'Hospital ?',
@@ -157,11 +184,13 @@ async function init() {
   startLiveClock();
   initMap();
   setupEventListeners();
+  setupAuthEventListeners();
   updateQuickScanChips();
   await loadInitialData();
   await loadNotifications();
   setupWebSocket();
   await loadAuditHistory();
+  initAuth();
 }
 
 // 1. Live Clock display matching screenshot
@@ -180,8 +209,17 @@ function startLiveClock() {
 // 2. Load Data from Backend
 async function loadInitialData() {
   try {
-    const res = await fetch('/api/recommendations');
-    const data = await res.json();
+    const [recRes, hospRes] = await Promise.all([
+      fetch('/api/recommendations'),
+      fetch('/api/hospitals')
+    ]);
+
+    const data = await recRes.json();
+    if (hospRes.ok) {
+      state.hospitals = await hospRes.json();
+      populateHospitalDropdowns();
+      syncMapMarkers();
+    }
 
     state.recommendations = data.recommendations || [];
     state.predictions = data.predictions || [];
@@ -190,6 +228,7 @@ async function loadInitialData() {
     renderAll();
     updateMapData();
     updateScannerDisplayStock();
+    updateQuickScanChips();
   } catch (err) {
     console.error('Failed to load initial data:', err);
   }
@@ -228,6 +267,9 @@ function setupWebSocket() {
       } else if (data.type === 'TRANSFER_EXECUTED') {
         showToast(`✓ Ambulance dispatched! ${data.transfer.quantity} cylinders transferred.`, 'success');
         loadAuditHistory();
+      } else if (data.type === 'HOSPITAL_REGISTERED') {
+        showToast(`🏥 New facility registered: ${data.hospital.name}!`, 'info');
+        loadInitialData();
       }
     } catch (err) {
       console.error('WebSocket parse error:', err);
@@ -807,10 +849,10 @@ function updateMapData() {
 
   if (state.recommendations && state.recommendations.length > 0) {
     const topRec = state.recommendations[0];
-    const donor = HOSPITALS_DATA[topRec.donorId];
-    const recip = HOSPITALS_DATA[topRec.recipientId];
+    const donor = getHosp(topRec.donorId);
+    const recip = getHosp(topRec.recipientId);
 
-    if (donor && recip) {
+    if (donor && recip && donor.lat && recip.lat) {
       if (state.routePolyline) {
         state.map.removeLayer(state.routePolyline);
       }
@@ -825,10 +867,10 @@ function updateMapData() {
 
 window.selectHospitalOnMap = function(hospitalId) {
   state.selectedHospitalId = hospitalId;
-  const h = HOSPITALS_DATA[hospitalId];
+  const h = getHosp(hospitalId);
   if (!h) return;
 
-  if (state.map) {
+  if (state.map && h.lat && h.lng) {
     state.map.flyTo([h.lat, h.lng], 14, { duration: 0.8 });
     const marker = state.mapMarkers[hospitalId];
     if (marker) marker.openPopup();
@@ -849,17 +891,17 @@ window.selectHospitalOnMap = function(hospitalId) {
   if (nameEl) nameEl.textContent = `${h.shortName} (${h.fullName})`;
   if (areaEl) areaEl.textContent = `${h.area} Corridor`;
   if (addrEl) addrEl.textContent = h.address;
-  if (coordsEl) coordsEl.textContent = `${h.lat.toFixed(4)}° N, ${Math.abs(h.lng).toFixed(4)}° W`;
+  if (coordsEl && h.lat && h.lng) coordsEl.textContent = `${h.lat.toFixed(4)}° N, ${Math.abs(h.lng).toFixed(4)}° W`;
   if (phoneEl) phoneEl.textContent = h.phone;
 
   const pred = state.predictions.find(p => p.hospitalId === hospitalId);
   if (stockEl) stockEl.textContent = `${pred ? Math.round(pred.currentStock) : 100} Cylinders`;
 
-  if (gmapsBtn) {
+  if (gmapsBtn && h.lat && h.lng) {
     gmapsBtn.href = `https://www.google.com/maps/search/?api=1&query=${h.lat},${h.lng}`;
   }
-  if (gmapsDirBtn) {
-    const donor = HOSPITALS_DATA['HOSP-02'];
+  if (gmapsDirBtn && h.lat && h.lng) {
+    const donor = getHosp('HOSP-02');
     gmapsDirBtn.href = `https://www.google.com/maps/dir/?api=1&origin=${donor.lat},${donor.lng}&destination=${h.lat},${h.lng}`;
   }
 
@@ -990,17 +1032,7 @@ function setupEventListeners() {
   const loginSelect = document.getElementById('userHospitalLoginSelect');
   if (loginSelect) {
     loginSelect.addEventListener('change', async (e) => {
-      state.loggedInHospitalId = e.target.value;
-      const h = getHosp(state.loggedInHospitalId);
-      
-      const label = document.getElementById('scannerActiveHospitalLabel');
-      if (label) label.textContent = `${h.shortName} (${h.fullName})`;
-
-      showToast(`Logged in as ${h.shortName} (${h.fullName})`, 'info');
-      updateQuickScanChips();
-      updateScannerDisplayStock();
-      await loadNotifications();
-      renderStockLevelsTable();
+      await quickLoginHospital(e.target.value);
     });
   }
 
@@ -1090,6 +1122,410 @@ function setupEventListeners() {
       }
     });
   }
+}
+
+// ==========================================
+// Dynamic Dropdowns & Map Marker Synchronizer
+// ==========================================
+function populateHospitalDropdowns() {
+  const loginSelect = document.getElementById('userHospitalLoginSelect');
+  const mapSelect = document.getElementById('mapHospitalSelector');
+
+  if (loginSelect && state.hospitals.length > 0) {
+    const currentVal = state.loggedInHospitalId;
+    loginSelect.innerHTML = state.hospitals.map(h => {
+      const info = getHosp(h.id);
+      return `<option value="${h.id}" class="bg-slate-900 text-white" ${h.id === currentVal ? 'selected' : ''}>Switch: ${info.shortName} (${h.name})</option>`;
+    }).join('');
+  }
+
+  if (mapSelect && state.hospitals.length > 0) {
+    const currentVal = state.selectedHospitalId;
+    mapSelect.innerHTML = `<option value="">Select hospital to zoom...</option>` + state.hospitals.map(h => {
+      const info = getHosp(h.id);
+      return `<option value="${h.id}" ${h.id === currentVal ? 'selected' : ''}>${info.shortName}: ${h.name}</option>`;
+    }).join('');
+  }
+}
+
+function syncMapMarkers() {
+  if (!state.map) return;
+  const list = state.hospitals.length > 0 ? state.hospitals : Object.keys(HOSPITALS_DATA).map(id => ({
+    id,
+    ...HOSPITALS_DATA[id],
+    location: {
+      lat: HOSPITALS_DATA[id].lat,
+      lng: HOSPITALS_DATA[id].lng,
+      address: HOSPITALS_DATA[id].address,
+      phone: HOSPITALS_DATA[id].phone
+    }
+  }));
+
+  list.forEach(hosp => {
+    const hospId = hosp.id;
+    const h = getHosp(hospId);
+    const lat = hosp.location?.lat || h.lat;
+    const lng = hosp.location?.lng || h.lng;
+
+    if (!state.mapMarkers[hospId] && lat && lng) {
+      const marker = L.circleMarker([lat, lng], {
+        radius: 10,
+        fillColor: '#10b981',
+        color: '#ffffff',
+        weight: 3,
+        opacity: 1,
+        fillOpacity: 0.95
+      }).addTo(state.map);
+
+      marker.bindPopup(`
+        <div class="p-3 text-xs space-y-1">
+          <h4 class="font-bold text-slate-800 text-sm">${h.shortName} (${h.area})</h4>
+          <p class="text-slate-600 font-semibold">${h.fullName}</p>
+          <p class="text-slate-500">📍 ${hosp.location?.address || h.address}</p>
+          <p class="font-mono text-emerald-700 font-bold">📞 ${hosp.location?.phone || h.phone}</p>
+          <div class="pt-2">
+            <a href="https://www.google.com/maps/search/?api=1&query=${lat},${lng}" target="_blank" class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-bold text-[11px] inline-block shadow-xs">
+              Open in Google Maps &rarr;
+            </a>
+          </div>
+        </div>
+      `);
+
+      marker.on('click', () => {
+        selectHospitalOnMap(hospId);
+      });
+
+      state.mapMarkers[hospId] = marker;
+    }
+  });
+}
+
+// ==========================================
+// Hospital Authentication & Registration Logic
+// ==========================================
+
+function initAuth() {
+  try {
+    const raw = localStorage.getItem('oxygen_hospital_session');
+    if (raw) {
+      const session = JSON.parse(raw);
+      if (session && session.hospital && session.hospital.id) {
+        state.loggedInHospitalId = session.hospital.id;
+        state.currentUser = session.user || null;
+        state.authToken = session.token || null;
+        updateHeaderAuthUI(session.hospital, session.user);
+        closeAuthModal();
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn('Error reading saved session:', e);
+  }
+
+  // Not logged in: Show modal
+  openAuthModal('login', false);
+}
+
+function updateHeaderAuthUI(hospital, user) {
+  const nameEl = document.getElementById('headerHospitalName');
+  const staffEl = document.getElementById('headerHospitalStaff');
+  const loginSelect = document.getElementById('userHospitalLoginSelect');
+  const label = document.getElementById('scannerActiveHospitalLabel');
+
+  const hInfo = getHosp(hospital.id);
+  const displayName = hospital.name || hInfo.fullName;
+  const staffName = user?.contactPerson || 'Staff Coordinator';
+
+  if (nameEl) nameEl.textContent = `${hInfo.shortName} (${displayName})`;
+  if (staffEl) staffEl.textContent = `${staffName} • Connected`;
+  if (loginSelect) loginSelect.value = hospital.id;
+  if (label) label.textContent = `${hInfo.shortName} (${displayName})`;
+}
+
+function openAuthModal(initialTab = 'login', allowClose = true) {
+  const modal = document.getElementById('authModal');
+  const closeBtn = document.getElementById('btnCloseAuthModal');
+  if (!modal) return;
+
+  if (closeBtn) {
+    if (allowClose) closeBtn.classList.remove('hidden');
+    else closeBtn.classList.add('hidden');
+  }
+
+  switchAuthTab(initialTab);
+  modal.classList.remove('hidden');
+  hideAuthAlert();
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById('authModal');
+  if (modal) modal.classList.add('hidden');
+  hideAuthAlert();
+}
+
+function switchAuthTab(tab) {
+  const loginView = document.getElementById('loginView');
+  const registerView = document.getElementById('registerView');
+  const tabLoginBtn = document.getElementById('tabLoginBtn');
+  const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+
+  hideAuthAlert();
+
+  if (tab === 'login') {
+    if (loginView) loginView.classList.remove('hidden');
+    if (registerView) registerView.classList.add('hidden');
+    if (tabLoginBtn) {
+      tabLoginBtn.className = 'flex-1 py-2 rounded-md text-white bg-indigo-600 shadow-sm transition text-center cursor-pointer';
+    }
+    if (tabRegisterBtn) {
+      tabRegisterBtn.className = 'flex-1 py-2 rounded-md text-slate-300 hover:text-white transition text-center cursor-pointer';
+    }
+  } else {
+    if (loginView) loginView.classList.add('hidden');
+    if (registerView) registerView.classList.remove('hidden');
+    if (tabLoginBtn) {
+      tabLoginBtn.className = 'flex-1 py-2 rounded-md text-slate-300 hover:text-white transition text-center cursor-pointer';
+    }
+    if (tabRegisterBtn) {
+      tabRegisterBtn.className = 'flex-1 py-2 rounded-md text-white bg-emerald-600 shadow-sm transition text-center cursor-pointer';
+    }
+  }
+}
+
+function showAuthAlert(message, isError = true) {
+  const alertEl = document.getElementById('authAlert');
+  if (!alertEl) return;
+  alertEl.textContent = message;
+  alertEl.className = isError
+    ? 'mx-6 mt-4 p-3 rounded-lg text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block'
+    : 'mx-6 mt-4 p-3 rounded-lg text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+}
+
+function hideAuthAlert() {
+  const alertEl = document.getElementById('authAlert');
+  if (alertEl) alertEl.className = 'hidden';
+}
+
+async function quickLoginHospital(hospitalId) {
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hospitalId })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showAuthAlert(data.error || 'Failed to sign in', true);
+      return;
+    }
+
+    localStorage.setItem('oxygen_hospital_session', JSON.stringify({
+      hospital: data.hospital,
+      user: data.user,
+      token: data.token
+    }));
+
+    state.loggedInHospitalId = data.hospital.id;
+    state.currentUser = data.user;
+    state.authToken = data.token;
+
+    updateHeaderAuthUI(data.hospital, data.user);
+    closeAuthModal();
+    showToast(`✓ Logged in as ${data.hospital.name}`, 'info');
+
+    updateQuickScanChips();
+    updateScannerDisplayStock();
+    await loadNotifications();
+    renderStockLevelsTable();
+  } catch (err) {
+    showAuthAlert('Network error: ' + err.message, true);
+  }
+}
+window.quickLoginHospital = quickLoginHospital;
+
+async function handleLoginSubmit(e) {
+  e.preventDefault();
+  const emailInput = document.getElementById('loginEmail');
+  const passwordInput = document.getElementById('loginPassword');
+
+  const email = emailInput ? emailInput.value.trim() : '';
+  const password = passwordInput ? passwordInput.value : '';
+
+  if (!email) {
+    showAuthAlert('Please enter your account email or select a facility.', true);
+    return;
+  }
+
+  const submitBtn = document.getElementById('btnSubmitLogin');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="animate-spin inline-block mr-1">⌛</span> Signing In...';
+  }
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showAuthAlert(data.error || 'Login failed. Please check your credentials.', true);
+      return;
+    }
+
+    localStorage.setItem('oxygen_hospital_session', JSON.stringify({
+      hospital: data.hospital,
+      user: data.user,
+      token: data.token
+    }));
+
+    state.loggedInHospitalId = data.hospital.id;
+    state.currentUser = data.user;
+    state.authToken = data.token;
+
+    updateHeaderAuthUI(data.hospital, data.user);
+    closeAuthModal();
+    showToast(`✓ Welcome, ${data.user?.contactPerson || 'Staff'}! Signed in to ${data.hospital.name}.`, 'success');
+
+    updateQuickScanChips();
+    updateScannerDisplayStock();
+    await loadNotifications();
+    renderStockLevelsTable();
+  } catch (err) {
+    showAuthAlert('Sign in error: ' + err.message, true);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="log-in" class="h-4 w-4"></i><span>Sign In to Hospital Portal</span>';
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+
+async function handleRegisterSubmit(e) {
+  e.preventDefault();
+
+  const name = document.getElementById('regHospitalName').value.trim();
+  const type = document.getElementById('regHospitalType').value;
+  const address = document.getElementById('regAddress').value.trim();
+  const district = document.getElementById('regDistrict').value.trim();
+  const dispatchContact = document.getElementById('regContactPerson').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const capacity = document.getElementById('regCapacity').value;
+  const initialStock = document.getElementById('regInitialStock').value;
+  const baselineBurnRate = document.getElementById('regBurnRate').value;
+  const email = document.getElementById('regEmail').value.trim();
+  const password = document.getElementById('regPassword').value;
+
+  if (!name || !email || !password || !address) {
+    showAuthAlert('Please fill in all required fields (*).', true);
+    return;
+  }
+
+  const submitBtn = document.getElementById('btnSubmitRegister');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="animate-spin inline-block mr-1">⌛</span> Registering Facility...';
+  }
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name,
+        type,
+        address,
+        district,
+        dispatchContact,
+        phone,
+        capacity: Number(capacity),
+        initialStock: Number(initialStock),
+        baselineBurnRate: Number(baselineBurnRate),
+        email,
+        password
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      showAuthAlert(data.error || 'Registration failed.', true);
+      return;
+    }
+
+    localStorage.setItem('oxygen_hospital_session', JSON.stringify({
+      hospital: data.hospital,
+      user: data.user,
+      token: data.token
+    }));
+
+    state.loggedInHospitalId = data.hospital.id;
+    state.currentUser = data.user;
+    state.authToken = data.token;
+
+    // Reset form
+    document.getElementById('formRegister').reset();
+
+    await loadInitialData();
+    updateHeaderAuthUI(data.hospital, data.user);
+    closeAuthModal();
+
+    showToast(`✓ Hospital ${data.hospital.name} registered and connected to District 04 Network!`, 'success');
+    selectHospitalOnMap(data.hospital.id);
+  } catch (err) {
+    showAuthAlert('Registration error: ' + err.message, true);
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="building-2" class="h-4 w-4"></i><span>Register Hospital & Connect to Network</span>';
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+}
+
+function handleLogout() {
+  localStorage.removeItem('oxygen_hospital_session');
+  state.currentUser = null;
+  state.authToken = null;
+  showToast('Logged out of facility. Please sign in or select a facility.', 'info');
+  openAuthModal('login', false);
+}
+
+function setupAuthEventListeners() {
+  const formLogin = document.getElementById('formLogin');
+  if (formLogin) formLogin.addEventListener('submit', handleLoginSubmit);
+
+  const formRegister = document.getElementById('formRegister');
+  if (formRegister) formRegister.addEventListener('submit', handleRegisterSubmit);
+
+  const btnOpenRegister = document.getElementById('btnOpenRegisterModal');
+  if (btnOpenRegister) {
+    btnOpenRegister.addEventListener('click', () => openAuthModal('register', true));
+  }
+
+  const btnLogout = document.getElementById('btnLogout');
+  if (btnLogout) {
+    btnLogout.addEventListener('click', handleLogout);
+  }
+
+  const btnClose = document.getElementById('btnCloseAuthModal');
+  if (btnClose) {
+    btnClose.addEventListener('click', closeAuthModal);
+  }
+
+  const tabLoginBtn = document.getElementById('tabLoginBtn');
+  if (tabLoginBtn) tabLoginBtn.addEventListener('click', () => switchAuthTab('login'));
+
+  const tabRegisterBtn = document.getElementById('tabRegisterBtn');
+  if (tabRegisterBtn) tabRegisterBtn.addEventListener('click', () => switchAuthTab('register'));
+
+  const linkGoToRegister = document.getElementById('linkGoToRegister');
+  if (linkGoToRegister) linkGoToRegister.addEventListener('click', () => switchAuthTab('register'));
+
+  const linkGoToLogin = document.getElementById('linkGoToLogin');
+  if (linkGoToLogin) linkGoToLogin.addEventListener('click', () => switchAuthTab('login'));
 }
 
 document.addEventListener('DOMContentLoaded', init);
