@@ -158,3 +158,222 @@ input[type=range] {
 .leaflet-container {
   font-family: inherit;
 }
+
+/* ========================================================= */
+/* 🌟 ADVANCED 3D ANIMATION & SPATIAL COMPUTING UI SYSTEM 🌟 */
+/* ========================================================= */
+
+/* 1. Perspective & 3D Stage Enclosures */
+.perspective-container {
+  perspective: 1200px;
+  transform-style: preserve-3d;
+}
+
+.perspective-deep {
+  perspective: 1800px;
+  transform-style: preserve-3d;
+}
+
+/* 2. Interactive 3D Tilt Card Base */
+.card-3d-tilt,
+.kpi-card {
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0.1, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  will-change: transform;
+}
+
+.card-3d-tilt:hover,
+.kpi-card:hover {
+  box-shadow: 
+    0 22px 35px -10px rgba(15, 23, 42, 0.15),
+    0 12px 20px -8px rgba(6, 182, 212, 0.12),
+    0 0 0 1px rgba(56, 189, 248, 0.35);
+}
+
+/* Z-Depth Stacking Layers (Pop elements out in 3D stereoscopic space) */
+.depth-layer-1 {
+  transform: translateZ(14px);
+  transform-style: preserve-3d;
+}
+
+.depth-layer-2 {
+  transform: translateZ(26px);
+  transform-style: preserve-3d;
+}
+
+.depth-layer-3 {
+  transform: translateZ(42px);
+  transform-style: preserve-3d;
+}
+
+/* Dynamic Specular Sheen Reflection Layer */
+.glare-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle 280px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.05) 45%, transparent 70%);
+  transition: opacity 0.35s ease;
+  mix-blend-mode: overlay;
+  z-index: 20;
+}
+
+.card-3d-tilt:hover .glare-overlay,
+.kpi-card:hover .glare-overlay {
+  opacity: 1;
+}
+
+/* 3. 3D Floating Keyframe Oscillations */
+@keyframes float3D {
+  0%, 100% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg) translateZ(0px);
+  }
+  25% {
+    transform: translateY(-6px) rotateX(2.5deg) rotateY(-2deg) translateZ(8px);
+  }
+  50% {
+    transform: translateY(-9px) rotateX(0.5deg) rotateY(1.5deg) translateZ(14px);
+  }
+  75% {
+    transform: translateY(-4px) rotateX(-2deg) rotateY(-1deg) translateZ(6px);
+  }
+}
+
+.animate-float-3d {
+  animation: float3D 6s ease-in-out infinite;
+}
+
+.animate-float-slow {
+  animation: float3D 9s ease-in-out infinite;
+}
+
+/* 4. 3D Gyroscopic Pulse & Radar Rings */
+@keyframes gyroSpin {
+  0% {
+    transform: rotate(0deg) rotateX(60deg) scale(0.9);
+    opacity: 0.8;
+  }
+  50% {
+    transform: rotate(180deg) rotateX(45deg) scale(1.15);
+    opacity: 0.4;
+  }
+  100% {
+    transform: rotate(360deg) rotateX(60deg) scale(0.9);
+    opacity: 0.8;
+  }
+}
+
+.gyro-ring {
+  border-radius: 9999px;
+  border: 1.5px dashed rgba(6, 182, 212, 0.6);
+  animation: gyroSpin 8s linear infinite;
+}
+
+/* 5. 3D Command Viewport & Canvas Theatre */
+#viewport3DContainer {
+  background: radial-gradient(circle at 50% 25%, #1e293b 0%, #0f172a 65%, #020617 100%);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: 
+    0 25px 50px -12px rgba(2, 6, 23, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 35px -5px rgba(6, 182, 212, 0.15);
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+}
+
+#canvas3dCommand {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: grab;
+  outline: none;
+}
+
+#canvas3dCommand:active {
+  cursor: grabbing;
+}
+
+/* 3D Holographic Grid Background for Viewport */
+.holo-grid-bg {
+  position: absolute;
+  inset: 0;
+  background-size: 32px 32px;
+  background-image: 
+    linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+  pointer-events: none;
+  opacity: 0.75;
+}
+
+/* 6. 3D Barcode Hologram & Vertical Laser Scanner */
+@keyframes holoScanBeam {
+  0% {
+    top: 0%;
+    opacity: 0.3;
+    box-shadow: 0 0 15px #06b6d4, 0 0 30px #06b6d4;
+  }
+  50% {
+    top: 50%;
+    opacity: 1;
+    box-shadow: 0 0 25px #10b981, 0 0 45px #10b981;
+  }
+  100% {
+    top: 100%;
+    opacity: 0.3;
+    box-shadow: 0 0 15px #06b6d4, 0 0 30px #06b6d4;
+  }
+}
+
+.holo-laser-beam {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent 5%, #06b6d4 30%, #10b981 50%, #06b6d4 70%, transparent 95%);
+  animation: holoScanBeam 2s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 25;
+}
+
+/* 7. Neon Cyber-Clinical Accents */
+.border-cyber-glow {
+  border-color: rgba(6, 182, 212, 0.5);
+  box-shadow: 0 0 16px rgba(6, 182, 212, 0.25);
+}
+
+.badge-neon-emerald {
+  background: rgba(16, 185, 129, 0.12);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.45);
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+}
+
+.badge-neon-rose {
+  background: rgba(244, 63, 94, 0.12);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.45);
+  box-shadow: 0 0 12px rgba(244, 63, 94, 0.3);
+}
+
+/* 8. 3D Cylinder HUD Floating Tooltip */
+.hud-tag-3d {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -100%);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(6, 182, 212, 0.2);
+  border-radius: 0.5rem;
+  padding: 0.35rem 0.65rem;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 30;
+}
