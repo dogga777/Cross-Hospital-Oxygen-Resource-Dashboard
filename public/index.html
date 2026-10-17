@@ -16,66 +16,56 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
   <link rel="stylesheet" href="/css/style.css">
-
-  <!-- Three.js 3D WebGL Engine (Offline Local Bundle) -->
-  <script src="/js/three.min.js"></script>
 </head>
 <body class="bg-[#f0f4f8] text-slate-800 min-h-screen font-sans antialiased">
 
-  <!-- 1. PRISTINE APPLE-CLINICAL SPATIAL FROSTED GLASS HEADER -->
-  <header class="bg-white/85 backdrop-blur-xl border-b border-slate-200/90 sticky top-0 z-40 shadow-xs">
+  <!-- 1. TOP DARK HEADER BANNER WITH HOSPITAL LOGIN (Matching image) -->
+  <header class="bg-[#242b3b] text-white shadow-md sticky top-0 z-40">
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between">
       
       <!-- Left: Logo & Title -->
-      <div class="flex items-center space-x-2.5">
-        <div class="h-8 w-8 rounded-lg bg-teal-50 text-teal-700 border border-teal-200/80 flex items-center justify-center font-bold text-sm shadow-xs animate-float-3d">
-          🫁
-        </div>
-        <div>
-          <h1 class="text-sm sm:text-base font-bold tracking-tight text-slate-900 flex items-center gap-2">
-            Cross-Hospital Oxygen Resource Dashboard
-            <span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          </h1>
-          <span class="text-[11px] text-slate-500 font-medium block">Clinical Spatial Command &middot; District 04 Fleet</span>
-        </div>
+      <div class="flex items-center space-x-2">
+        <h1 class="text-base sm:text-xl font-bold tracking-tight text-white">
+          Cross-Hospital Oxygen Resource Dashboard
+        </h1>
       </div>
 
       <!-- Right: User Hospital Login Profile & Cross-Hospital Notification Bell -->
       <div class="flex items-center space-x-2.5 text-xs">
         
         <!-- Notification Bell (Cross-Hospital Alert Center) -->
-        <button id="btnToggleNotifications" class="relative p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200/90 transition cursor-pointer" title="Cross-Hospital Alerts">
+        <button id="btnToggleNotifications" class="relative p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition cursor-pointer" title="Cross-Hospital Alerts">
           <i data-lucide="bell" class="h-4 w-4"></i>
           <span id="notifBadge" class="hidden absolute -top-1 -right-1 h-4 w-4 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center animate-pulse">0</span>
         </button>
 
         <!-- Hospital User Profile & Facility Switcher -->
-        <div id="userProfileBar" class="flex items-center space-x-2 bg-slate-50 border border-slate-200/90 rounded-lg p-1.5 px-3">
-          <div class="h-6 w-6 rounded-full bg-teal-600 text-white flex items-center justify-center font-bold text-xs shrink-0 shadow-xs">
+        <div id="userProfileBar" class="flex items-center space-x-2 bg-slate-800/90 border border-slate-700 rounded-lg p-1.5 px-3">
+          <div class="h-6 w-6 rounded-full bg-emerald-500 text-slate-900 flex items-center justify-center font-bold text-xs shrink-0">
             🏥
           </div>
           <div class="leading-tight text-left">
-            <span id="headerHospitalName" class="text-xs font-bold text-slate-800 block truncate max-w-[170px]">Hospital A (Metro General)</span>
-            <span id="headerHospitalStaff" class="text-[10px] text-teal-700 block font-semibold truncate max-w-[170px]">Dr. Sarah Chen • Logged In</span>
+            <span id="headerHospitalName" class="text-xs font-bold text-white block truncate max-w-[170px]">Hospital A (Metro General)</span>
+            <span id="headerHospitalStaff" class="text-[10px] text-emerald-400 block font-medium truncate max-w-[170px]">Dr. Sarah Chen • Logged In</span>
           </div>
-          <select id="userHospitalLoginSelect" class="bg-white text-slate-800 font-semibold text-[11px] rounded px-1.5 py-1 border border-slate-300 focus:outline-none cursor-pointer ml-1" title="Switch active facility">
-            <option value="HOSP-01">Switch: Hospital A (Metro)</option>
-            <option value="HOSP-02">Switch: Hospital B (St. Jude)</option>
-            <option value="HOSP-03">Switch: Hospital C (Riverbank)</option>
-            <option value="HOSP-04">Switch: Hospital D (Oak Valley)</option>
-            <option value="HOSP-05">Switch: Hospital E (Mercy Urban)</option>
-            <option value="HOSP-06">Switch: Hospital F (Highland)</option>
+          <select id="userHospitalLoginSelect" class="bg-slate-900 text-slate-300 font-semibold text-[11px] rounded px-1.5 py-1 border border-slate-700 focus:outline-none cursor-pointer ml-1" title="Switch active facility">
+            <option value="HOSP-01" class="bg-slate-900 text-white">Switch: Hospital A (Metro)</option>
+            <option value="HOSP-02" class="bg-slate-900 text-white">Switch: Hospital B (St. Jude)</option>
+            <option value="HOSP-03" class="bg-slate-900 text-white">Switch: Hospital C (Riverbank)</option>
+            <option value="HOSP-04" class="bg-slate-900 text-white">Switch: Hospital D (Oak Valley)</option>
+            <option value="HOSP-05" class="bg-slate-900 text-white">Switch: Hospital E (Mercy Urban)</option>
+            <option value="HOSP-06" class="bg-slate-900 text-white">Switch: Hospital F (Highland)</option>
           </select>
         </div>
 
         <!-- Register New Hospital Button -->
-        <button id="btnOpenRegisterModal" class="px-2.5 py-1.5 rounded-lg bg-teal-600 hover:bg-teal-700 text-white font-bold text-xs flex items-center gap-1 transition shadow-xs cursor-pointer" title="Register a new hospital into the network">
+        <button id="btnOpenRegisterModal" class="px-2.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center gap-1 transition shadow-sm cursor-pointer" title="Register a new hospital into the network">
           <i data-lucide="plus-circle" class="h-3.5 w-3.5"></i>
-          <span class="hidden sm:inline">Register Facility</span>
+          <span class="hidden sm:inline">Register Hospital</span>
         </button>
 
         <!-- Log Out Button -->
-        <button id="btnLogout" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-700 border border-slate-200/90 font-semibold text-xs flex items-center gap-1 transition cursor-pointer" title="Log out of current hospital facility">
+        <button id="btnLogout" class="px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-rose-900/60 hover:text-rose-200 text-slate-300 border border-slate-700 font-semibold text-xs flex items-center gap-1 transition cursor-pointer" title="Log out of current hospital facility">
           <i data-lucide="log-out" class="h-3.5 w-3.5"></i>
           <span class="hidden sm:inline">Log Out</span>
         </button>
@@ -84,66 +74,66 @@
 
     </div>
 
-    <!-- 2. SUB-HEADER ACTION CONTROLS & STATUS BAR -->
-    <div class="bg-slate-50/80 border-t border-b border-slate-200/60 px-4 sm:px-6 lg:px-8 py-2">
+    <!-- 2. SUB-HEADER ACTION CONTROLS & STATUS BAR (Matching image) -->
+    <div class="bg-white border-b border-slate-200 px-4 sm:px-6 lg:px-8 py-2">
       <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3 text-xs">
         
         <!-- Network Connection Status -->
-        <div class="flex items-center space-x-2 text-slate-600">
-          <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
-          <span id="networkStatusText" class="font-medium text-slate-700">Network Connected</span>
+        <div class="flex items-center space-x-2 text-slate-700">
+          <span class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span id="networkStatusText" class="font-medium text-slate-700">Network connected</span>
         </div>
 
-        <!-- Action Buttons (Apple Clinical Frosted Pills) -->
+        <!-- Action Buttons (Exact buttons from screenshot) -->
         <div class="flex items-center flex-wrap gap-2">
           
-          <button id="btnSimulateDemand" class="px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-800 border border-slate-200 font-semibold text-xs shadow-2xs transition cursor-pointer">
-            Simulate Demand
+          <button id="btnSimulateDemand" class="px-3 py-1.5 rounded-md bg-[#244b7a] hover:bg-[#1d3d63] text-white font-semibold text-xs shadow-sm transition cursor-pointer">
+            Simulate demand
           </button>
 
-          <button id="btnDetectTransfer" class="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition cursor-pointer flex items-center gap-1">
+          <button id="btnDetectTransfer" class="px-3.5 py-1.5 rounded-md bg-[#16a34a] hover:bg-[#15803d] text-white font-bold text-xs shadow-sm transition cursor-pointer flex items-center gap-1">
             <i data-lucide="zap" class="h-3.5 w-3.5"></i>
-            <span>Detect & Transfer</span>
+            <span>Detect & transfer</span>
           </button>
 
-          <a href="#barcodeScannerSection" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-teal-50 text-teal-800 border border-slate-200 font-bold text-xs flex items-center gap-1 transition shadow-2xs">
-            <i data-lucide="scan-line" class="h-3.5 w-3.5 text-teal-600"></i>
-            <span>Scan Barcode</span>
+          <a href="#barcodeScannerSection" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-indigo-700 border border-slate-300 font-bold text-xs flex items-center gap-1 transition">
+            <i data-lucide="scan-line" class="h-3.5 w-3.5"></i>
+            <span>Scan Cylinder Barcode</span>
           </a>
 
-          <a href="#mapSection" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium text-xs flex items-center gap-1 transition shadow-2xs">
+          <a href="#mapSection" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 font-medium text-xs flex items-center gap-1 transition">
             <i data-lucide="map-pin" class="h-3.5 w-3.5 text-rose-500"></i>
             <span>Google Maps</span>
           </a>
 
-          <a href="/api/transfers/export/barcode-csv" download="oxygen_cylinder_barcode_movements.csv" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-teal-50 text-teal-800 border border-slate-200 font-bold text-xs flex items-center gap-1 transition shadow-2xs" title="Download CSV of oxygen cylinder barcodes moving from hospital to hospital">
-            <i data-lucide="barcode" class="h-3.5 w-3.5 text-teal-600"></i>
-            <span>Barcode CSV</span>
+          <a href="/api/transfers/export/barcode-csv" download="oxygen_cylinder_barcode_movements.csv" class="px-2.5 py-1.5 rounded-md bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-bold text-xs flex items-center gap-1 transition" title="Download CSV of oxygen cylinder barcodes moving from hospital to hospital">
+            <i data-lucide="barcode" class="h-3.5 w-3.5"></i>
+            <span>Barcode Movement .CSV</span>
           </a>
 
-          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium text-xs flex items-center gap-1 transition shadow-2xs" title="Download Manifest Summary CSV">
-            <i data-lucide="download" class="h-3.5 w-3.5 text-slate-500"></i>
+          <a href="/api/transfers/export/csv" download="oxygen_transfer_manifest_history.csv" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-teal-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition" title="Download Manifest Summary CSV">
+            <i data-lucide="download" class="h-3.5 w-3.5"></i>
             <span>Summary CSV</span>
           </a>
 
-          <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-medium text-xs flex items-center gap-1 transition shadow-2xs">
-            <i data-lucide="file-text" class="h-3.5 w-3.5 text-emerald-600"></i>
+          <a href="/api/transfers/export/pdf" download="oxygen_transfer_manifest_history.pdf" target="_blank" class="px-2.5 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200 text-emerald-800 border border-slate-300 font-medium text-xs flex items-center gap-1 transition">
+            <i data-lucide="file-text" class="h-3.5 w-3.5"></i>
             <span>PDF</span>
           </a>
 
-          <button id="btnOpenAiAlertModal" type="button" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-purple-50 text-purple-700 border border-slate-200 font-bold text-xs flex items-center gap-1 transition shadow-2xs cursor-pointer" title="Customize Gemini AI clinical reasoning prompt & alert notifications">
+          <button id="btnOpenAiAlertModal" type="button" class="px-2.5 py-1.5 rounded-md bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer" title="Customize Gemini AI clinical reasoning prompt & alert notifications">
             <i data-lucide="sparkles" class="h-3.5 w-3.5 text-purple-600"></i>
             <span>AI & Alerts</span>
           </button>
 
-          <button id="btnOpenExportOptionsModal" type="button" class="px-2.5 py-1.5 rounded-lg bg-white hover:bg-amber-50 text-amber-800 border border-slate-200 font-bold text-xs flex items-center gap-1 transition shadow-2xs cursor-pointer" title="Configure custom fields for CSV & PDF exports">
+          <button id="btnOpenExportOptionsModal" type="button" class="px-2.5 py-1.5 rounded-md bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200 font-bold text-xs flex items-center gap-1 transition cursor-pointer" title="Configure custom fields for CSV & PDF exports">
             <i data-lucide="sliders-horizontal" class="h-3.5 w-3.5 text-amber-600"></i>
-            <span>Export Fields</span>
+            <span>Custom Export Fields</span>
           </button>
 
         </div>
 
-        <!-- Live Clock -->
+        <!-- Live Clock (Matching screenshot) -->
         <div id="liveClockDisplay" class="text-slate-500 font-mono text-xs font-semibold shrink-0">
           --:--:-- --
         </div>
@@ -171,18 +161,18 @@
   <!-- MAIN CONTAINER -->
   <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
 
-    <!-- 3. TOP 4 METRIC KPI CARDS (Expanded Clinical Metrics with 3D Spatial Parallax) -->
-    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 perspective-container">
+    <!-- 3. TOP 4 METRIC KPI CARDS (Expanded Clinical Metrics) -->
+    <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       
       <!-- Card 1: Total District Oxygen Reserves -->
-      <div class="kpi-card card-3d-tilt bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
-        <div class="flex items-center justify-between depth-layer-1">
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
           <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">District O₂ Reserves</span>
-          <div class="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm shadow-xs animate-float-3d">
+          <div class="h-8 w-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm shadow-xs">
             🫁
           </div>
         </div>
-        <div class="mt-3 depth-layer-2">
+        <div class="mt-3">
           <div class="flex items-baseline gap-1.5">
             <span id="topTotalCylinders" class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono">--</span>
             <span class="text-xs font-bold text-slate-500">Cylinders</span>
@@ -199,14 +189,14 @@
       </div>
 
       <!-- Card 2: Emergency Shortage Risk Horizon -->
-      <div class="kpi-card card-3d-tilt bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
-        <div class="flex items-center justify-between depth-layer-1">
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
           <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">Shortage Risk Horizon</span>
-          <div class="h-8 w-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm shadow-xs animate-float-3d">
+          <div class="h-8 w-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center font-bold text-sm shadow-xs">
             🚨
           </div>
         </div>
-        <div class="mt-3 depth-layer-2">
+        <div class="mt-3">
           <div class="flex items-baseline gap-1.5">
             <span id="topAtRiskCount" class="text-2xl sm:text-3xl font-extrabold text-rose-600 font-mono">--</span>
             <span class="text-xs font-bold text-slate-500">Facilities At Risk</span>
@@ -221,14 +211,14 @@
       </div>
 
       <!-- Card 3: Active Patient Oxygen Load -->
-      <div class="kpi-card card-3d-tilt bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
-        <div class="flex items-center justify-between depth-layer-1">
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
           <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">Active Clinical Demand</span>
-          <div class="h-8 w-8 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold text-sm shadow-xs animate-float-3d">
+          <div class="h-8 w-8 rounded-lg bg-cyan-50 text-cyan-600 flex items-center justify-center font-bold text-sm shadow-xs">
             👥
           </div>
         </div>
-        <div class="mt-3 depth-layer-2">
+        <div class="mt-3">
           <div class="flex items-baseline gap-1.5">
             <span id="topTotalPatients" class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono">--</span>
             <span class="text-xs font-bold text-slate-500">Patients on O₂</span>
@@ -241,14 +231,14 @@
       </div>
 
       <!-- Card 4: Transfer Activity & Dispatches -->
-      <div class="kpi-card card-3d-tilt bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
-        <div class="flex items-center justify-between depth-layer-1">
+      <div class="kpi-card bg-white rounded-xl border border-slate-200/90 p-4 shadow-sm flex flex-col justify-between">
+        <div class="flex items-center justify-between">
           <span class="text-xs text-slate-500 font-semibold tracking-wide uppercase">Logistics Corridors</span>
-          <div class="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-xs animate-float-3d">
+          <div class="h-8 w-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm shadow-xs">
             🚑
           </div>
         </div>
-        <div class="mt-3 depth-layer-2">
+        <div class="mt-3">
           <div class="flex items-baseline gap-1.5">
             <span id="topActiveTransfersCount" class="text-2xl sm:text-3xl font-extrabold text-slate-900 font-mono">--</span>
             <span class="text-xs font-bold text-slate-500">Dispatches Logged</span>
@@ -260,96 +250,6 @@
         </div>
       </div>
 
-    </section>
-
-    <!-- 3.2 🌟 PRISTINE APPLE-CLINICAL SPATIAL 3D COMMAND PAVILION 🌟 -->
-    <section class="perspective-deep">
-      <div id="viewport3DContainer" class="p-4 sm:p-5 text-slate-800 relative min-h-[460px] flex flex-col justify-between">
-        
-        <!-- 3D Header Bar & Interactive Mode Controls -->
-        <div class="relative z-20 flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-200/80 pb-3">
-          
-          <!-- Left: Title & Live 3D Spatial Badge -->
-          <div class="flex items-center space-x-3">
-            <div class="h-10 w-10 rounded-xl bg-teal-50 border border-teal-200/90 text-teal-700 flex items-center justify-center font-bold text-lg shadow-xs shrink-0 animate-float-3d">
-              🌐
-            </div>
-            <div>
-              <div class="flex items-center gap-2">
-                <h2 class="text-base sm:text-lg font-bold tracking-tight text-slate-900 flex items-center gap-2">
-                  Spatial 3D Command Studio & Digital Twin
-                </h2>
-                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-teal-50 text-teal-800 border border-teal-200/80 uppercase tracking-wider shadow-2xs">
-                  <span class="w-1.5 h-1.5 rounded-full bg-teal-500 animate-ping"></span>
-                  Studio 60FPS
-                </span>
-              </div>
-              <p class="text-xs text-slate-500 mt-0.5">
-                Real-time spatial telemetry, architectural hospital pavilions, autonomous cryo-ambulance trajectories, and pressure twin.
-              </p>
-            </div>
-          </div>
-
-          <!-- Right: Mode Switchers & 3D Controls -->
-          <div class="flex items-center flex-wrap gap-2 text-xs">
-            
-            <!-- Mode 1: 3D District Grid -->
-            <button type="button" class="btn-3d-mode px-3.5 py-1.5 rounded-lg font-bold text-xs bg-emerald-600 text-white shadow-sm transition cursor-pointer flex items-center gap-1.5" data-mode="GRID" onclick="window.setVisualizerMode('GRID')">
-              <span>🌐 District Studio</span>
-            </button>
-
-            <!-- Mode 2: 3D Cylinder Twin -->
-            <button type="button" class="btn-3d-mode px-3.5 py-1.5 rounded-lg font-semibold text-xs bg-white/80 hover:bg-white text-slate-700 border border-slate-200/90 shadow-2xs transition cursor-pointer flex items-center gap-1.5" data-mode="CYLINDER" onclick="window.setVisualizerMode('CYLINDER')">
-              <span>🫁 Cylinder Twin</span>
-            </button>
-
-            <!-- Mode 3: Cinematic Orbit -->
-            <button type="button" class="btn-3d-mode px-3.5 py-1.5 rounded-lg font-semibold text-xs bg-white/80 hover:bg-white text-slate-700 border border-slate-200/90 shadow-2xs transition cursor-pointer flex items-center gap-1.5" data-mode="ORBIT" onclick="window.setVisualizerMode('ORBIT')">
-              <span>🎥 Cinematic Orbit</span>
-            </button>
-
-            <!-- Action: Vent Gas Simulation -->
-            <button type="button" id="btnVent3dFlow" class="px-2.5 py-1.5 rounded-lg font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow-xs transition cursor-pointer flex items-center gap-1" title="Test 3D Pressure Flush & Gas Vapor Release">
-              <span>💨 Vent Flow</span>
-            </button>
-
-            <!-- Controls: Auto-Rotate & Reset -->
-            <button type="button" id="btnToggle3dAutoRotate" class="p-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs transition cursor-pointer" title="Toggle Auto-Rotation">
-              <i data-lucide="rotate-cw" class="h-4 w-4"></i>
-            </button>
-
-            <button type="button" id="btnReset3dCamera" class="p-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200/90 shadow-2xs transition cursor-pointer" title="Reset 3D Camera">
-              <i data-lucide="crosshair" class="h-4 w-4"></i>
-            </button>
-
-          </div>
-
-        </div>
-
-        <!-- 3D WebGL Canvas Layer -->
-        <div class="relative w-full h-[360px] sm:h-[420px] my-2 rounded-xl overflow-hidden bg-slate-50 border border-slate-200/60 shadow-inner">
-          <canvas id="canvas3dCommand"></canvas>
-
-          <!-- 3D Screen Overlay HUD Tags Container -->
-          <div id="viewport3dLabels" class="absolute inset-0 pointer-events-none"></div>
-
-          <!-- Bottom Left: Interactive Hint -->
-          <div class="absolute bottom-3 left-3 pointer-events-none text-[11px] text-slate-600 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full border border-slate-200 shadow-sm flex items-center gap-2">
-            <span>🖱️ Left Drag to Orbit 360°</span>
-            <span>&bull;</span>
-            <span>Scroll to Zoom</span>
-            <span>&bull;</span>
-            <span>Click Building to Select</span>
-          </div>
-
-          <!-- Bottom Right: Live Cylinder Telemetry Pill -->
-          <div class="absolute bottom-3 right-3 pointer-events-none text-[11px] bg-white/90 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-teal-200 shadow-sm space-y-0.5 text-right font-mono">
-            <span class="text-[10px] text-slate-500 uppercase font-semibold">Digital Twin Protocol &middot; </span>
-            <span class="text-teal-800 font-bold">USP O₂ 99.5% &middot; 2,200 PSI</span>
-          </div>
-        </div>
-
-      </div>
     </section>
 
     <!-- 3.5 ADVANCED EMERGENCY & TRANSFER RULES PROTOCOL CONTROL PANEL -->
@@ -671,12 +571,9 @@
             </div>
           </div>
 
-          <!-- 3D Laser Barcode Hologram Preview -->
-          <div class="relative bg-white rounded-lg p-3.5 border border-slate-200 flex items-center justify-between overflow-hidden shadow-xs card-3d-tilt">
-            <!-- Animated 3D Laser Beam -->
-            <div class="holo-laser-beam"></div>
-
-            <div class="flex items-center space-x-3 depth-layer-1">
+          <!-- Laser Barcode Graphic Preview -->
+          <div class="relative bg-white rounded-lg p-3 border border-slate-200 flex items-center justify-between overflow-hidden">
+            <div class="flex items-center space-x-3">
               <div class="text-2xl font-black font-mono tracking-widest text-slate-800 select-all" id="barcodeSvgText">
                 || | ||| || ||| | ||
               </div>
@@ -686,43 +583,43 @@
               </div>
             </div>
 
-            <!-- Animated Laser Scan Badge -->
-            <div class="flex items-center space-x-1.5 text-[11px] font-mono text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md border border-emerald-200 depth-layer-2">
+            <!-- Animated Laser Scan Line -->
+            <div class="flex items-center space-x-1.5 text-[11px] font-mono text-emerald-600 bg-emerald-50 px-2 py-1 rounded border border-emerald-200">
               <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
-              <span>3D Laser Active</span>
+              <span>Scanner Ready</span>
             </div>
           </div>
 
         </div>
 
-        <!-- Right: Scanned Result & Live Stock Counter with 3D Parallax Tilt -->
-        <div id="scanResultCard" class="card-3d-tilt bg-indigo-50/60 rounded-xl border border-indigo-200 p-4 flex flex-col justify-between space-y-3">
-          <div class="depth-layer-1">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">3D Digital Twin Verification</span>
+        <!-- Right: Scanned Result & Live Stock Counter -->
+        <div id="scanResultCard" class="bg-indigo-50/60 rounded-xl border border-indigo-200 p-4 flex flex-col justify-between space-y-3">
+          <div>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-indigo-700 block">Scan Stock Verification</span>
             <h3 id="scanResultTitle" class="text-base font-extrabold text-slate-800 mt-1">Ready to Scan</h3>
             <p id="scanResultSub" class="text-xs text-slate-600 mt-0.5">Scan a barcode to check remaining cylinders and update ward inventory.</p>
 
-            <div class="mt-3 space-y-2 bg-white p-3 rounded-lg border border-indigo-100 text-xs depth-layer-2 shadow-xs">
+            <div class="mt-3 space-y-2 bg-white p-3 rounded-lg border border-indigo-100 text-xs">
               <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">Cylinders Left in Hospital:</span>
+                <span class="text-slate-500">Cylinders Left in Hospital:</span>
                 <span id="scanResultStockLeft" class="font-bold text-indigo-700 text-base font-mono">-- Cylinders</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">Cylinder Status:</span>
+                <span class="text-slate-500">Cylinder Status:</span>
                 <span id="scanResultStatus" class="font-bold text-emerald-700">IN_STOCK</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">Ward Location:</span>
-                <span id="scanResultWard" class="text-slate-700 font-semibold">ICU Ward A</span>
+                <span class="text-slate-500">Ward Location:</span>
+                <span id="scanResultWard" class="text-slate-700">ICU Ward A</span>
               </div>
               <div class="flex items-center justify-between">
-                <span class="text-slate-500 font-medium">Gas Purity / Pressure:</span>
-                <span id="scanResultPurity" class="text-slate-700 font-mono font-semibold">99.5% &middot; 2050 PSI</span>
+                <span class="text-slate-500">Gas Purity / Pressure:</span>
+                <span id="scanResultPurity" class="text-slate-700">99.5% &middot; 2050 PSI</span>
               </div>
             </div>
           </div>
 
-          <div id="scanNotificationBadge" class="hidden p-2.5 rounded-lg bg-rose-100 border border-rose-300 text-rose-800 text-[11px] font-bold leading-tight depth-layer-2">
+          <div id="scanNotificationBadge" class="hidden p-2.5 rounded-lg bg-rose-100 border border-rose-300 text-rose-800 text-[11px] font-bold leading-tight">
             🚨 SHORTAGE DETECTED! Hospital reserve &le; 20 cylinders. Emergency notification sent to Hospital B!
           </div>
         </div>
@@ -1475,7 +1372,6 @@
   <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
 
   <script src="/js/app.js"></script>
-  <script src="/js/visualizer3d.js"></script>
   <script>
     lucide.createIcons();
   </script>
