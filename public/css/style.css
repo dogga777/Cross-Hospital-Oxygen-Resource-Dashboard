@@ -1,223 +1,110 @@
-/* Advanced Clinical Command Center Styling */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+/* 🌟 Apple-Clinical Spatial Computing Design System 🌟 */
+/* Aesthetic: Pristine White Frosted Glass, Studio Lighting, Chrome Accents, Minimalist Typography */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 :root {
-  --primary-navy: #0f172a;
-  --panel-bg: #ffffff;
-  --accent-cyan: #06b6d4;
-  --accent-emerald: #10b981;
-  --accent-rose: #f43f5e;
-  --accent-amber: #f59e0b;
-  --border-subtle: #e2e8f0;
+  --primary-slate: #0f172a;
+  --clinical-teal: #0d9488;
+  --clinical-emerald: #059669;
+  --clinical-rose: #e11d48;
+  --clinical-amber: #d97706;
+  --glass-bg: rgba(255, 255, 255, 0.82);
+  --glass-border: rgba(226, 232, 240, 0.85);
 }
 
 body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background-color: #f1f5f9;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  background-color: #f8fafc;
   background-image: 
-    radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.04) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, rgba(16, 185, 129, 0.04) 0px, transparent 50%),
-    radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.03) 0px, transparent 50%);
+    radial-gradient(at 0% 0%, rgba(13, 148, 136, 0.04) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(5, 150, 105, 0.04) 0px, transparent 50%),
+    radial-gradient(at 50% 100%, rgba(2, 132, 199, 0.03) 0px, transparent 50%);
   background-attachment: fixed;
   color: #1e293b;
-  letter-spacing: -0.012em;
+  letter-spacing: -0.014em;
+  -webkit-font-smoothing: antialiased;
 }
 
 .font-mono {
-  font-family: 'JetBrains Mono', monospace;
-}
-
-/* Glassmorphism & High-Tech Cards */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.96);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(226, 232, 240, 0.95);
-  box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
-}
-
-.glass-card-dark {
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(51, 65, 85, 0.7);
-  box-shadow: 0 10px 25px -5px rgba(15, 23, 42, 0.25);
-}
-
-/* Metric KPI Card Hover & Elevation */
-.kpi-card {
-  transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  overflow: hidden;
-}
-.kpi-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 28px -6px rgba(15, 23, 42, 0.08);
-}
-
-/* Pulsing Emergency Beacon */
-@keyframes beaconPulse {
-  0% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6);
-  }
-  70% {
-    transform: scale(1);
-    box-shadow: 0 0 0 10px rgba(244, 63, 94, 0);
-  }
-  100% {
-    transform: scale(0.95);
-    box-shadow: 0 0 0 0 rgba(244, 63, 94, 0);
-  }
-}
-.beacon-active {
-  animation: beaconPulse 2s infinite;
-}
-
-/* Custom range slider for emergency threshold */
-input[type=range] {
-  accent-color: #e11d48;
-}
-
-/* Map container styling */
-#hospitalMap {
-  height: 420px;
-  width: 100%;
-  border-radius: 0.85rem;
-  z-index: 10;
-  box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
-}
-
-/* Custom pulse for critical shortages */
-@keyframes criticalGlow {
-  0%, 100% {
-    border-color: rgba(239, 68, 68, 0.4);
-    box-shadow: 0 0 18px rgba(239, 68, 68, 0.2);
-  }
-  50% {
-    border-color: rgba(239, 68, 68, 0.95);
-    box-shadow: 0 0 30px rgba(239, 68, 68, 0.45);
-  }
-}
-.critical-pulse {
-  animation: criticalGlow 2s infinite ease-in-out;
-}
-
-/* Laser scan animation line */
-@keyframes laserScan {
-  0% {
-    top: 0%;
-    opacity: 0.2;
-  }
-  50% {
-    opacity: 0.9;
-  }
-  100% {
-    top: 100%;
-    opacity: 0.2;
-  }
-}
-.laser-line {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #ef4444, #f43f5e, #ef4444, transparent);
-  box-shadow: 0 0 12px #ef4444;
-  animation: laserScan 2.4s ease-in-out infinite;
-}
-
-/* Sleek Scrollbars */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
-}
-::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
-}
-
-/* Leaflet Popup Styling */
-.leaflet-popup-content-wrapper {
-  border-radius: 0.85rem;
-  padding: 0;
-  overflow: hidden;
-  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.2), 0 8px 10px -6px rgba(15, 23, 42, 0.1);
-  border: 1px solid rgba(226, 232, 240, 0.8);
-}
-.leaflet-popup-content {
-  margin: 0;
-  line-height: 1.4;
-}
-.leaflet-container {
-  font-family: inherit;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 /* ========================================================= */
-/* 🌟 ADVANCED 3D ANIMATION & SPATIAL COMPUTING UI SYSTEM 🌟 */
+/* 🌟 APPLE VISIONOS FROSTED GLASS & CHROME SURFACES 🌟 */
 /* ========================================================= */
 
-/* 1. Perspective & 3D Stage Enclosures */
+.spatial-glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow: 
+    0 10px 30px -5px rgba(15, 23, 42, 0.04),
+    0 1px 3px 0 rgba(15, 23, 42, 0.02),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
+}
+
+.spatial-panel {
+  background: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.85);
+  box-shadow: 
+    0 4px 20px -2px rgba(15, 23, 42, 0.03),
+    0 1px 2px 0 rgba(15, 23, 42, 0.02);
+  transition: all 0.25s cubic-bezier(0.2, 0, 0.1, 1);
+}
+
+.spatial-panel:hover {
+  box-shadow: 
+    0 12px 28px -6px rgba(15, 23, 42, 0.06),
+    0 0 0 1px rgba(13, 148, 136, 0.25);
+}
+
+/* ========================================================= */
+/* 🌟 3D SPATIAL PERSPECTIVE & SPECULAR TILT CARDS 🌟 */
+/* ========================================================= */
+
 .perspective-container {
   perspective: 1200px;
   transform-style: preserve-3d;
 }
 
-.perspective-deep {
-  perspective: 1800px;
-  transform-style: preserve-3d;
-}
-
-/* 2. Interactive 3D Tilt Card Base */
 .card-3d-tilt,
 .kpi-card {
   position: relative;
   transform-style: preserve-3d;
-  transition: transform 0.18s cubic-bezier(0.2, 0, 0.1, 1), box-shadow 0.25s ease, border-color 0.25s ease;
+  transition: transform 0.2s cubic-bezier(0.2, 0, 0.1, 1), box-shadow 0.25s ease, border-color 0.25s ease;
   will-change: transform;
 }
 
 .card-3d-tilt:hover,
 .kpi-card:hover {
+  transform: translateY(-2px);
   box-shadow: 
-    0 22px 35px -10px rgba(15, 23, 42, 0.15),
-    0 12px 20px -8px rgba(6, 182, 212, 0.12),
-    0 0 0 1px rgba(56, 189, 248, 0.35);
+    0 16px 32px -8px rgba(15, 23, 42, 0.08),
+    0 0 0 1px rgba(13, 148, 136, 0.3);
 }
 
-/* Z-Depth Stacking Layers (Pop elements out in 3D stereoscopic space) */
 .depth-layer-1 {
-  transform: translateZ(14px);
+  transform: translateZ(10px);
   transform-style: preserve-3d;
 }
 
 .depth-layer-2 {
-  transform: translateZ(26px);
+  transform: translateZ(22px);
   transform-style: preserve-3d;
 }
 
-.depth-layer-3 {
-  transform: translateZ(42px);
-  transform-style: preserve-3d;
-}
-
-/* Dynamic Specular Sheen Reflection Layer */
+/* Specular Glare Sheen */
 .glare-overlay {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   pointer-events: none;
   opacity: 0;
-  background: radial-gradient(circle 280px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.05) 45%, transparent 70%);
-  transition: opacity 0.35s ease;
+  background: radial-gradient(circle 240px at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(255, 255, 255, 0.5) 0%, transparent 65%);
+  transition: opacity 0.3s ease;
   mix-blend-mode: overlay;
-  z-index: 20;
+  z-index: 10;
 }
 
 .card-3d-tilt:hover .glare-overlay,
@@ -225,63 +112,34 @@ input[type=range] {
   opacity: 1;
 }
 
-/* 3. 3D Floating Keyframe Oscillations */
+/* 3D Floating Oscillations */
 @keyframes float3D {
   0%, 100% {
-    transform: translateY(0px) rotateX(0deg) rotateY(0deg) translateZ(0px);
-  }
-  25% {
-    transform: translateY(-6px) rotateX(2.5deg) rotateY(-2deg) translateZ(8px);
+    transform: translateY(0px) rotateX(0deg);
   }
   50% {
-    transform: translateY(-9px) rotateX(0.5deg) rotateY(1.5deg) translateZ(14px);
-  }
-  75% {
-    transform: translateY(-4px) rotateX(-2deg) rotateY(-1deg) translateZ(6px);
+    transform: translateY(-5px) rotateX(1.5deg);
   }
 }
 
 .animate-float-3d {
-  animation: float3D 6s ease-in-out infinite;
+  animation: float3D 5s ease-in-out infinite;
 }
 
-.animate-float-slow {
-  animation: float3D 9s ease-in-out infinite;
-}
+/* ========================================================= */
+/* 🌟 PRISTINE 3D STUDIO COMMAND THEATRE 🌟 */
+/* ========================================================= */
 
-/* 4. 3D Gyroscopic Pulse & Radar Rings */
-@keyframes gyroSpin {
-  0% {
-    transform: rotate(0deg) rotateX(60deg) scale(0.9);
-    opacity: 0.8;
-  }
-  50% {
-    transform: rotate(180deg) rotateX(45deg) scale(1.15);
-    opacity: 0.4;
-  }
-  100% {
-    transform: rotate(360deg) rotateX(60deg) scale(0.9);
-    opacity: 0.8;
-  }
-}
-
-.gyro-ring {
-  border-radius: 9999px;
-  border: 1.5px dashed rgba(6, 182, 212, 0.6);
-  animation: gyroSpin 8s linear infinite;
-}
-
-/* 5. 3D Command Viewport & Canvas Theatre */
 #viewport3DContainer {
-  background: radial-gradient(circle at 50% 25%, #1e293b 0%, #0f172a 65%, #020617 100%);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid rgba(226, 232, 240, 0.9);
   box-shadow: 
-    0 25px 50px -12px rgba(2, 6, 23, 0.65),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    0 0 35px -5px rgba(6, 182, 212, 0.15);
+    0 20px 45px -12px rgba(15, 23, 42, 0.06),
+    0 1px 3px 0 rgba(15, 23, 42, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 1);
   position: relative;
   overflow: hidden;
-  border-radius: 1rem;
+  border-radius: 1.25rem;
 }
 
 #canvas3dCommand {
@@ -296,34 +154,39 @@ input[type=range] {
   cursor: grabbing;
 }
 
-/* 3D Holographic Grid Background for Viewport */
-.holo-grid-bg {
+/* 3D Studio Projected HUD Labels */
+.hud-tag-3d {
   position: absolute;
-  inset: 0;
-  background-size: 32px 32px;
-  background-image: 
-    linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
-  pointer-events: none;
-  opacity: 0.75;
+  pointer-events: auto;
+  transform: translate(-50%, -100%);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 9999px;
+  padding: 0.32rem 0.75rem;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  box-shadow: 0 8px 20px -4px rgba(15, 23, 42, 0.08), 0 0 0 1px rgba(255, 255, 255, 0.8);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+  z-index: 25;
 }
 
-/* 6. 3D Barcode Hologram & Vertical Laser Scanner */
-@keyframes holoScanBeam {
+/* ========================================================= */
+/* 🌟 PRISTINE LASER SCANNER & BARCODE STYLING 🌟 */
+/* ========================================================= */
+
+@keyframes laserScanSurgical {
   0% {
     top: 0%;
     opacity: 0.3;
-    box-shadow: 0 0 15px #06b6d4, 0 0 30px #06b6d4;
   }
   50% {
     top: 50%;
-    opacity: 1;
-    box-shadow: 0 0 25px #10b981, 0 0 45px #10b981;
+    opacity: 0.95;
   }
   100% {
     top: 100%;
     opacity: 0.3;
-    box-shadow: 0 0 15px #06b6d4, 0 0 30px #06b6d4;
   }
 }
 
@@ -331,49 +194,47 @@ input[type=range] {
   position: absolute;
   left: 0;
   right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent 5%, #06b6d4 30%, #10b981 50%, #06b6d4 70%, transparent 95%);
-  animation: holoScanBeam 2s ease-in-out infinite;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 5%, #0d9488 40%, #059669 60%, transparent 95%);
+  box-shadow: 0 0 12px rgba(13, 148, 136, 0.6);
+  animation: laserScanSurgical 2.2s ease-in-out infinite;
   pointer-events: none;
-  z-index: 25;
+  z-index: 20;
 }
 
-/* 7. Neon Cyber-Clinical Accents */
-.border-cyber-glow {
-  border-color: rgba(6, 182, 212, 0.5);
-  box-shadow: 0 0 16px rgba(6, 182, 212, 0.25);
+/* Leaflet Map in Spatial Frame */
+#hospitalMap {
+  height: 420px;
+  width: 100%;
+  border-radius: 0.85rem;
+  z-index: 10;
 }
 
-.badge-neon-emerald {
-  background: rgba(16, 185, 129, 0.12);
-  color: #10b981;
-  border: 1px solid rgba(16, 185, 129, 0.45);
-  box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
+.leaflet-popup-content-wrapper {
+  border-radius: 0.85rem;
+  padding: 0;
+  overflow: hidden;
+  box-shadow: 0 20px 25px -5px rgba(15, 23, 42, 0.1), 0 8px 10px -6px rgba(15, 23, 42, 0.05);
+  border: 1px solid rgba(226, 232, 240, 0.9);
 }
 
-.badge-neon-rose {
-  background: rgba(244, 63, 94, 0.12);
-  color: #f43f5e;
-  border: 1px solid rgba(244, 63, 94, 0.45);
-  box-shadow: 0 0 12px rgba(244, 63, 94, 0.3);
+.leaflet-popup-content {
+  margin: 0;
+  line-height: 1.4;
 }
 
-/* 8. 3D Cylinder HUD Floating Tooltip */
-.hud-tag-3d {
-  position: absolute;
-  pointer-events: none;
-  transform: translate(-50%, -100%);
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(56, 189, 248, 0.4);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 0 15px rgba(6, 182, 212, 0.2);
-  border-radius: 0.5rem;
-  padding: 0.35rem 0.65rem;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 600;
-  white-space: nowrap;
-  transition: opacity 0.2s ease, transform 0.2s ease;
-  z-index: 30;
+/* Sleek Scrollbars */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
